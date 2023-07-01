@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use crossterm::event::Event;
 use ratatui::{backend::Backend, Frame};
 
-use crate::views::{home::Home, View};
+use crate::views::{home::Home, View, keyboard::Keyboard};
 
 pub enum AppCommand {
     ChangeRoute(&'static str),
@@ -17,16 +18,19 @@ pub struct App<B: Backend> {
 }
 
 impl<B: Backend> App<B> {
-    pub fn init() -> Self {
-        let routes: Vec<(&'static str, Box<dyn View<B>>)> = vec![("/", Box::new(Home::init()))];
+    pub fn init() -> Result<Self> {
+        let routes: Vec<(&'static str, Box<dyn View<B>>)> = vec![
+                ("/", Box::new(Home::init())),
+                ("/keyboard", Box::new(Keyboard::init()?))
+            ];
 
         let route_map: HashMap<&'static str, Box<dyn View<B>>> = routes.into_iter().collect();
 
-        Self {
+        Ok(        Self {
             is_running: true,
             route_map,
             current_route: "/",
-        }
+        })
     }
     pub fn render(&mut self, frame: &mut Frame<B>) {
         let view = self.route_map.get_mut(self.current_route).unwrap();

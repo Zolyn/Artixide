@@ -23,7 +23,7 @@ fn main() -> Result<()> {
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let mut app = App::init();
+    let mut app = App::init()?;
 
     while app.is_running() {
         terminal.draw(|f| app.render(f))?;

@@ -12,14 +12,14 @@ use ratatui::{
     Frame, style::{Style, Color, Modifier},
 };
 
-pub struct Menu<'a> {
-    raw_items: Vec<&'a str>,
+pub struct Menu {
+    raw_items: Vec<String>,
     index_range: Range<usize>,
     state: ListState,
 }
 
-impl<'a> Menu<'a> {
-    pub fn new<I: Into<Vec<&'a str>>>(items: I) -> Self {
+impl Menu {
+    pub fn new<I: Into<Vec<String>>>(items: I) -> Self {
         let raw_items: Vec<_> = items.into();
         let index_range = 0..raw_items.len();
         let mut state = ListState::default();
@@ -58,7 +58,7 @@ impl<'a> Menu<'a> {
     }
 
     pub fn current_item(&self) -> &str {
-        self.raw_items[self.current_index()]
+        &self.raw_items[self.current_index()]
     }
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>, area: Rect) {
@@ -90,7 +90,7 @@ impl<'a> Menu<'a> {
     ) {
         let items = self.raw_items
         .iter()
-        .map(|i| ListItem::new(*i))
+        .map(|i| ListItem::new(&**i))
         .collect::<Vec<_>>();
 
         let instance = f(items);
@@ -99,12 +99,12 @@ impl<'a> Menu<'a> {
     }
 }
 
-pub struct MenuView<'a> {
-    inner: Menu<'a>,
+pub struct MenuView {
+    inner: Menu
 }
 
-impl<'a> MenuView<'a> {
-    pub fn new<I: Into<Vec<&'a str>>>(items: I) -> Self {
+impl MenuView {
+    pub fn new<I: Into<Vec<String>>>(items: I) -> Self {
         let inner = Menu::new(items);
 
         Self { inner }
@@ -126,14 +126,14 @@ impl<'a> MenuView<'a> {
     }
 }
 
-impl<'a> Deref for MenuView<'a> {
-    type Target = Menu<'a>;
+impl Deref for MenuView {
+    type Target = Menu;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<'a> DerefMut for MenuView<'a> {
+impl DerefMut for MenuView{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
