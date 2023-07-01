@@ -1,54 +1,59 @@
-use std::rc::Rc;
+use ratatui::{layout::{Layout, Constraint, Direction, Alignment}, backend::Backend, text::{Line, Span}, widgets::Paragraph, style::{Style, Color}};
 
-use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{
-    backend::Backend,
-    layout::{Constraint, Layout, Rect},
-    style::{Color, Style},
-    widgets::{Block, Borders},
-    Frame,
-};
-
-use crate::{app::AppCommand, widgets::list::List};
+use crate::widgets::menu::MenuView;
 
 use super::View;
 
 pub struct Home<'a> {
-    list: List<'a>,
-    layout: Layout,
+    menu: MenuView<'a>,
+    layout: Layout
 }
 
 impl<'a> Home<'a> {
     pub fn init() -> Self {
         let layout = Layout::default()
-            .direction(ratatui::layout::Direction::Vertical)
-            .margin(0)
-            .constraints([
-                Constraint::Percentage(12),
-                Constraint::Percentage(70),
-                Constraint::Percentage(18),
-            ]);
+        .direction(Direction::Vertical)
+        .margin(0)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Max(24),
+            Constraint::Min(1)
+        ]);
 
-        let list = List::new(["Keyboard settings", "Mirror", "Partitioning", "Bootloader"]);
+        let menu = {
+            let items = [
+                "Keyboard",
+                "Partitioning",
+                "Bootloader",
+                "Timezone"
+            ];
 
-        Self { list, layout }
+            MenuView::new(items)
+        };
+
+        Self {
+            layout,
+            menu,
+        }
+
     }
 }
 
 impl<'a, B: Backend> View<B> for Home<'a> {
-    fn on_event(&mut self, event: KeyEvent) -> Option<AppCommand> {
-        match event.code {
-            KeyCode::Char(c) if c == 'q' => Some(AppCommand::Shutdown),
-            _ => None,
-        }
+    fn on_event(&mut self, event: crossterm::event::KeyEvent) -> Option<crate::app::AppCommand> {
+        self.menu.on_event(event)
     }
-    fn render(&mut self, frame: &mut Frame<B>) {
+    fn render(&mut self, frame: &mut ratatui::Frame<B>) {
         let chunks = self.layout.split(frame.size());
 
-        self.list.render_with(frame, chunks[1], |list| {
-            list.block(Block::default().borders(Borders::ALL))
-                .repeat_highlight_symbol(true)
-                .highlight_symbol("> ")
-        });
+        let text_area = Layout::default().direction(Direction::Vertical).margin(0).constraints([Constraint::Length(1); 3]).split(chunks[0])[1];
+
+        let text = Line::from(vec![Span::styled("Select option", Style::default().fg(Color::White))]);
+
+        let p = Paragraph::new(text);
+
+        frame.render_widget(p, text_area);
+
+        self.menu.render(frame, chunks[1])
     }
 }
