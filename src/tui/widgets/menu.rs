@@ -1,16 +1,16 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, Range, RangeBounds, DerefMut},
-};
-use crate::{views::View, app::AppCommand};
 
-use crossterm::event::{Event, KeyEvent, KeyCode};
+use std::ops::{Deref, DerefMut, Range};
+
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
     layout::Rect,
-    widgets::{self, ListItem, ListState, Widget, Block, Borders},
-    Frame, style::{Style, Color, Modifier},
+    style::{Color, Style},
+    widgets::{self, Block, Borders, ListItem, ListState},
+    Frame,
 };
+
+use crate::tui::{TuiCommand, Operation};
 
 pub struct Menu {
     raw_items: Vec<String>,
@@ -65,20 +65,29 @@ impl Menu {
         let selected_index = self.current_index();
 
         self.render_with(frame, area, |items| {
-            let items = items.into_iter().enumerate().map(|(index, item)| {
-                let style = Style::default().fg(Color::White);
+            let items = items
+                .into_iter()
+                .enumerate()
+                .map(|(index, item)| {
+                    let style = Style::default().fg(Color::White);
 
-                if index == selected_index {
-                    item.style(style.bg(Color::LightBlue))
-                } else {
-                    item.style(style)
-                }
-            }).collect::<Vec<_>>();
+                    if index == selected_index {
+                        item.style(style.bg(Color::LightBlue))
+                    } else {
+                        item.style(style)
+                    }
+                })
+                .collect::<Vec<_>>();
 
             let list = widgets::List::new(items);
 
-            list.block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::White)))
-                .highlight_symbol("> ").highlight_style(Style::default().fg(Color::White))
+            list.block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::White)),
+            )
+            .highlight_symbol("> ")
+            .highlight_style(Style::default().fg(Color::White))
         });
     }
 
@@ -88,19 +97,36 @@ impl Menu {
         area: Rect,
         f: F,
     ) {
-        let items = self.raw_items
-        .iter()
-        .map(|i| ListItem::new(&**i))
-        .collect::<Vec<_>>();
+        let items = self
+            .raw_items
+            .iter()
+            .map(|i| ListItem::new(&**i))
+            .collect::<Vec<_>>();
 
         let instance = f(items);
 
         frame.render_stateful_widget(instance, area, &mut self.state)
     }
+    pub fn update<F: FnOnce(&mut Vec<String>)>(&mut self, f: F) {
+        let old_len = self.raw_items.len();
+
+        f(&mut self.raw_items);
+
+        let new_len = self.raw_items.len();
+
+        if old_len == new_len {
+            return;
+        }
+
+        self.index_range = 0..new_len;
+
+        let new_selection = self.state.selected().unwrap().min(new_len - 1);
+        self.state.select(Some(new_selection))
+    }
 }
 
 pub struct MenuView {
-    inner: Menu
+    inner: Menu,
 }
 
 impl MenuView {
@@ -110,17 +136,17 @@ impl MenuView {
         Self { inner }
     }
 
-    pub fn on_event(&mut self, event: KeyEvent) -> Option<AppCommand> {
+    pub fn on_event(&mut self, event: KeyEvent) -> Option<TuiCommand> {
         match event.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.inner.prev_item();
                 None
-            },
+            }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.inner.next_item();
                 None
             }
-            KeyCode::Char('q') => Some(AppCommand::Shutdown),
+            KeyCode::Char('q') => Some(TuiCommand::Close(Operation::Quit)),
             _ => None,
         }
     }
@@ -133,8 +159,12 @@ impl Deref for MenuView {
     }
 }
 
-impl DerefMut for MenuView{
+impl DerefMut for MenuView {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
+}
+
+pub fn to_string_vec<'a, A: IntoIterator<Item = &'a str>>(arr: A) -> Vec<String> {
+    arr.into_iter().map(|s| s.to_string()).collect()
 }
