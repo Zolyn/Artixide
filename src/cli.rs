@@ -6,5 +6,7 @@ pub fn run() -> Result<()> {
     let mut config = Config::new();
     let operation = tui::guide(&mut config)?;
 
+    println!("{:#?}", config);
+
     Ok(())
 }

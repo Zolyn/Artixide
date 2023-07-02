@@ -51,6 +51,7 @@ impl View<TuiBackend> for Keyboard {
 
                 Some(TuiCommand::ChangeRoute("/".to_string()))
             },
+            KeyCode::Esc | KeyCode::Char('q') => Some(TuiCommand::ChangeRoute("/".to_string())),
             _ =>
                 self.menu.on_event(event)
         }

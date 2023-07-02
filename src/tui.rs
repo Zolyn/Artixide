@@ -1,6 +1,6 @@
 use std::{io::{Stdout, self}, collections::HashMap, path::{PathBuf}};
 
-use anyhow::{Result, Context};
+use anyhow::{Result, Context, anyhow};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{self, KeyEvent, Event}};
 use ratatui::{Terminal, backend::CrosstermBackend};
 
@@ -32,7 +32,8 @@ fn init() -> Result<Terminal<TuiBackend>> {
     execute!(stdout, EnterAlternateScreen)?;
 
     let backend = CrosstermBackend::new(stdout);
-    let terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend)?;
+    terminal.hide_cursor()?;
 
     Ok(terminal)
 }
@@ -41,6 +42,8 @@ fn close(terminal: &mut Terminal<TuiBackend>) -> Result<()> {
     disable_raw_mode()?;
 
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+
+    terminal.show_cursor()?;
 
     Ok(())
 }
