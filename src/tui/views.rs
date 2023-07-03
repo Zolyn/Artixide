@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
@@ -12,8 +12,8 @@ use crate::config::Config;
 
 use super::TuiCommand;
 
-pub mod main;
 pub mod keyboard;
+pub mod main;
 
 pub trait View<B: Backend> {
     fn render(&mut self, frame: &mut Frame<B>) -> Result<()>;
@@ -21,8 +21,7 @@ pub trait View<B: Backend> {
 }
 
 pub fn vertical_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
-    let mut constraints: Vec<Constraint> = constraints.into();
-    constraints.push(Constraint::Min(1));
+    let constraints: Vec<Constraint> = constraints.into();
     Layout::default()
         .direction(Direction::Vertical)
         .margin(0)

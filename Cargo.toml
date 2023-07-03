@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.71"
 crossterm = "0.26.1"
+fuzzy-matcher = "0.3.7"
 once_cell = "1.18.0"
 ratatui = { version = "0.21.0", features = ["crossterm"] }

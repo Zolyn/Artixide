@@ -1,20 +1,28 @@
-use std::{io::{Stdout, self}, collections::HashMap, path::{PathBuf}};
+use std::{
+    collections::HashMap,
+    io::{self, Stdout},
+    path::PathBuf,
+};
 
-use anyhow::{Result, Context, anyhow};
-use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{self, KeyEvent, Event}};
-use ratatui::{Terminal, backend::CrosstermBackend};
+use anyhow::{Context, Result};
+use crossterm::{
+    event::{self, Event},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::config::Config;
 
-use self::views::{View, main::Main, keyboard::Keyboard};
+use self::views::{keyboard::Keyboard, main::Main, View};
 
 mod views;
-pub mod widgets;
+pub(crate) mod widgets;
 
 pub enum Operation {
     SaveAs(PathBuf),
     Install,
-    Quit
+    Quit,
 }
 
 pub enum TuiCommand {
@@ -55,10 +63,11 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
 
     let routes: Vec<(&'static str, Box<dyn View<TuiBackend>>)> = vec![
         ("/", Box::new(Main::new())),
-        ("/keyboard", Box::new(Keyboard::new())),
+        ("/keyboard_layout", Box::new(Keyboard::new())),
     ];
 
-    let mut route_map: HashMap<&'static str, Box<dyn View<TuiBackend>>> = routes.into_iter().collect();
+    let mut route_map: HashMap<&'static str, Box<dyn View<TuiBackend>>> =
+        routes.into_iter().collect();
     let mut route = "/".to_string();
 
     loop {
@@ -76,13 +85,17 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
             TuiCommand::ChangeRoute(r) => route = r,
             TuiCommand::Close(operation) => {
                 close(&mut terminal).context("Close Tui")?;
-                break Ok(operation)
+                break Ok(operation);
             }
         }
     }
 }
 
-fn render_view(terminal: &mut Terminal<TuiBackend>, view: &mut Box<dyn View<TuiBackend>>, config: &mut Config) -> Result<TuiCommand> {
+fn render_view(
+    terminal: &mut Terminal<TuiBackend>,
+    view: &mut Box<dyn View<TuiBackend>>,
+    config: &mut Config,
+) -> Result<TuiCommand> {
     let mut render_error: Option<anyhow::Error> = None;
 
     loop {
@@ -93,18 +106,15 @@ fn render_view(terminal: &mut Terminal<TuiBackend>, view: &mut Box<dyn View<TuiB
         })?;
 
         if let Some(e) = render_error {
-            break Err(e)
+            break Err(e);
         }
 
         if let Event::Key(key_event) = event::read()? {
             let command = view.on_event(key_event, config);
 
             if let Some(command) = command {
-                break Ok(command)
+                break Ok(command);
             }
         }
-
     }
-
-
 }
