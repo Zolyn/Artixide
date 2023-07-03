@@ -14,6 +14,7 @@ use super::TuiCommand;
 
 pub mod keyboard;
 pub mod main;
+pub mod mirror;
 
 pub trait View<B: Backend> {
     fn render(&mut self, frame: &mut Frame<B>) -> Result<()>;

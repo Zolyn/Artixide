@@ -65,7 +65,7 @@ impl View<TuiBackend> for Keyboard {
     ) -> Option<crate::tui::TuiCommand> {
         match event.code {
             KeyCode::Enter => {
-                config.keyboard_layout = self.menu.current_item().to_string();
+                config.keyboard_layout = self.menu.current_item()?.to_string();
 
                 Some(TuiCommand::ChangeRoute("/".to_string()))
             }

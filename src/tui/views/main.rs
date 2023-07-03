@@ -59,7 +59,7 @@ impl View<TuiBackend> for Main {
             KeyCode::Enter => {
                 let selected = format!(
                     "/{}",
-                    self.menu.current_item().to_lowercase().replace(' ', "_")
+                    self.menu.current_item()?.to_lowercase().replace(' ', "_")
                 );
 
                 Some(TuiCommand::ChangeRoute(selected))

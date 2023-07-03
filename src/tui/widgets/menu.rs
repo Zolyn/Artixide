@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    ops::{Deref, DerefMut, Range},
+    ops::{Deref, DerefMut},
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -10,7 +10,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{self, Block, Borders, ListItem, ListState},
+    widgets::{self, Block, Borders, List, ListItem, ListState},
     Frame,
 };
 
@@ -19,12 +19,11 @@ use crate::tui::TuiCommand;
 #[derive(Default)]
 pub struct Menu {
     raw_items: Vec<String>,
-    index_range: Range<usize>,
     state: ListState,
-    reset_when_update: bool,
     search_mode: bool,
     search_input: String,
     fuzzy_matcher: SkimMatcherV2,
+    matched_items_count: Option<usize>,
 }
 
 impl Menu {
@@ -33,31 +32,32 @@ impl Menu {
 
     pub fn new<I: Into<Vec<String>>>(items: I) -> Self {
         let raw_items: Vec<_> = items.into();
-        let index_range = 0..raw_items.len();
         let mut state = ListState::default();
         state.select(Some(0));
 
         Self {
             raw_items,
-            index_range,
             state,
             ..Default::default()
         }
     }
 
-    fn current_index(&self) -> usize {
-        self.state.selected().unwrap()
-    }
-
-    pub fn reset_when_update(mut self, val: bool) -> Self {
-        self.reset_when_update = val;
-        self
+    fn current_index(&self) -> Option<usize> {
+        self.state.selected()
     }
 
     pub fn next_item(&mut self) {
-        let mut next = self.current_index() + 1;
+        let cur = self.current_index();
 
-        if !self.index_range.contains(&next) {
+        if cur.is_none() {
+            return;
+        }
+
+        let cur = cur.unwrap();
+
+        let mut next = cur + 1;
+
+        if next > self.raw_items.len() - 1 {
             next = 0;
         }
 
@@ -66,6 +66,13 @@ impl Menu {
 
     pub fn prev_item(&mut self) {
         let cur = self.current_index();
+
+        if cur.is_none() {
+            return;
+        }
+
+        let cur = cur.unwrap();
+
         let prev = if cur == 0 {
             self.raw_items.len() - 1
         } else {
@@ -75,14 +82,22 @@ impl Menu {
         self.state.select(Some(prev))
     }
 
-    pub fn current_item(&self) -> &str {
-        &self.raw_items[self.current_index()]
+    fn items_count(&self) -> usize {
+        if self.search_mode {
+            0
+        } else {
+            self.raw_items.len()
+        }
+    }
+
+    pub fn current_item(&self) -> Option<&str> {
+        let cur = self.current_index()?;
+
+        Some(&self.raw_items[cur])
     }
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>, area: Rect) {
-        let selected_index = self.current_index();
-
-        self.render_with(frame, area, |items| {
+        self.render_with(frame, area, |items, selected_index| {
             let items = items
                 .into_iter()
                 .enumerate()
@@ -105,14 +120,15 @@ impl Menu {
         });
     }
 
-    pub fn render_with<B: Backend, F: Fn(Vec<ListItem>) -> widgets::List>(
+    pub fn render_with<B: Backend, F: Fn(Vec<ListItem>, usize) -> widgets::List>(
         &mut self,
         frame: &mut Frame<B>,
         area: Rect,
         f: F,
     ) {
         let items = if self.search_mode && !self.search_input.is_empty() {
-            self.raw_items
+            let items_match = self
+                .raw_items
                 .iter()
                 .filter_map(|i| {
                     let indicies_set: HashSet<usize> = HashSet::from_iter(
@@ -138,6 +154,7 @@ impl Menu {
                                 c.to_string(),
                                 Style::default().bg(Color::Yellow),
                             ));
+
                             buf
                         });
 
@@ -147,35 +164,59 @@ impl Menu {
 
                     Some(ListItem::new(Line::from(spans)))
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>();
+
+            let matched_items_count = items_match.len();
+
+            // self.update_state(matched_items_count, self.matched_items_count.unwrap_or(self.raw_items.len()));
+            self.update_state(matched_items_count, self.raw_items.len());
+
+            self.matched_items_count = Some(matched_items_count);
+
+            items_match
         } else {
             self.raw_items.iter().map(|i| ListItem::new(&**i)).collect()
         };
 
-        let instance = f(items);
+        let cur = self.current_index();
+
+        if self.current_index().is_none() {
+            frame.render_widget(
+                List::new([]).block(Block::default().borders(Borders::ALL)),
+                area,
+            );
+            return;
+        }
+
+        let cur = cur.unwrap();
+
+        let instance = f(items, cur);
 
         frame.render_stateful_widget(instance, area, &mut self.state)
     }
+
     pub fn update<F: FnOnce(&mut Vec<String>)>(&mut self, f: F) {
         let old_len = self.raw_items.len();
 
         f(&mut self.raw_items);
 
-        let new_len = self.raw_items.len();
+        self.update_state(self.raw_items.len(), old_len)
+    }
 
-        if old_len == new_len {
+    fn update_state(&mut self, len: usize, old_len: usize) {
+        if old_len == len {
             return;
         }
 
-        self.index_range = 0..new_len;
-
-        let new_selection = if self.reset_when_update {
-            0
+        let new_selection = if len == 0 {
+            None
         } else {
-            self.state.selected().unwrap().min(new_len - 1)
+            Some(self.current_index().unwrap_or(0).min(len - 1))
         };
 
-        self.state.select(Some(new_selection))
+        // Reset offset and recalculate it when rendering
+        *self.state.offset_mut() = 0;
+        self.state.select(new_selection)
     }
 
     pub fn get_searchbar_text(&self) -> String {

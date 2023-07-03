@@ -14,10 +14,10 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::config::Config;
 
-use self::views::{keyboard::Keyboard, main::Main, View};
+use self::views::{keyboard::Keyboard, main::Main, mirror::Mirror, View};
 
 mod views;
-pub(crate) mod widgets;
+mod widgets;
 
 pub enum Operation {
     SaveAs(PathBuf),
@@ -64,6 +64,7 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
     let routes: Vec<(&'static str, Box<dyn View<TuiBackend>>)> = vec![
         ("/", Box::new(Main::new())),
         ("/keyboard_layout", Box::new(Keyboard::new())),
+        ("/mirror", Box::new(Mirror::new())),
     ];
 
     let mut route_map: HashMap<&'static str, Box<dyn View<TuiBackend>>> =
