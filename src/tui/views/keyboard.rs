@@ -77,9 +77,9 @@ impl View<TuiBackend> for Keyboard {
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         let chunks = self.layout.split(frame.size());
 
-        let layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
+        let _layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
 
-        self.menu.update(|items| *items = layouts);
+        // self.menu.update(|items| *items = layouts);
 
         self.menu.render(frame, chunks[1]);
 

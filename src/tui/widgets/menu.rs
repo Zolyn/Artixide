@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
+    rc::Rc,
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -18,10 +19,12 @@ use crate::tui::TuiCommand;
 
 #[derive(Default)]
 pub struct Menu {
-    raw_items: Vec<String>,
+    raw_items: Vec<Rc<String>>,
     state: ListState,
     search_mode: bool,
     search_input: String,
+    matched_items: Vec<(Rc<String>, HashSet<usize>)>,
+    already_matched: bool,
     fuzzy_matcher: SkimMatcherV2,
     matched_items_count: Option<usize>,
 }
@@ -30,8 +33,8 @@ impl Menu {
     pub const SEARCH_TIP: &'static str = r#"(Press "/" to search)"#;
     pub const NAVIGATION_TIP: &'static str = "j, k, Up, Down to move";
 
-    pub fn new<I: Into<Vec<String>>>(items: I) -> Self {
-        let raw_items: Vec<_> = items.into();
+    pub fn new(items: Vec<String>) -> Self {
+        let raw_items = items.into_iter().map(Rc::new).collect();
         let mut state = ListState::default();
         state.select(Some(0));
 
@@ -127,55 +130,80 @@ impl Menu {
         f: F,
     ) {
         let items = if self.search_mode && !self.search_input.is_empty() {
-            let items_match = self
+            self.matched_items = self
                 .raw_items
                 .iter()
                 .filter_map(|i| {
-                    let indicies_set: HashSet<usize> = HashSet::from_iter(
+                    let indices_set: HashSet<usize> = HashSet::from_iter(
                         self.fuzzy_matcher.fuzzy_indices(i, &self.search_input)?.1,
                     );
 
+                    Some((Rc::clone(i), indices_set))
+                })
+                .collect();
+
+            let items_match = self
+                .matched_items
+                .iter()
+                .map(|(item, indices_set)| {
                     let mut spans: Vec<Span> = vec![];
 
-                    let buf = i
-                        .char_indices()
-                        .fold(String::new(), |mut buf, (indice, c)| {
-                            if !indicies_set.contains(&indice) {
-                                buf.push(c);
-                                return buf;
+                    let len = item.chars().count();
+                    let mut start = 0;
+                    let mut match_start = 0;
+                    let mut match_len = 1;
+
+                    for &index in indices_set {
+                        if start > index {
+                            unreachable!("start should always <= index while looping")
+                        }
+
+                        if start < index {
+                            if match_start != 0 {
+                                spans.push(Span::styled(
+                                    slice(item, match_start, match_start + match_len).unwrap(),
+                                    Style::default().bg(Color::Yellow),
+                                ));
+                                match_len = 1;
                             }
 
-                            if !buf.is_empty() {
-                                spans.push(Span::raw(buf));
-                                buf = String::new()
-                            }
+                            spans.push(Span::raw(slice(item, start, index).unwrap()));
 
-                            spans.push(Span::styled(
-                                c.to_string(),
-                                Style::default().bg(Color::Yellow),
-                            ));
+                            start = index + 1;
+                            match_start = index;
+                            continue;
+                        }
 
-                            buf
-                        });
-
-                    if !buf.is_empty() {
-                        spans.push(Span::raw(buf))
+                        start = index + 1;
+                        match_len += 1;
                     }
 
-                    Some(ListItem::new(Line::from(spans)))
+                    spans.push(Span::styled(
+                        slice(item, match_start, match_start + match_len).unwrap(),
+                        Style::default().bg(Color::Yellow),
+                    ));
+
+                    if start < len {
+                        spans.push(Span::raw(slice(item, start, len).unwrap()))
+                    }
+
+                    ListItem::new(Line::from(spans))
                 })
                 .collect::<Vec<_>>();
 
             let matched_items_count = items_match.len();
 
             // self.update_state(matched_items_count, self.matched_items_count.unwrap_or(self.raw_items.len()));
-            self.update_state(matched_items_count, self.raw_items.len());
+            // self.update_state(matched_items_count, self.raw_items.len());
 
             self.matched_items_count = Some(matched_items_count);
 
             items_match
         } else {
-            self.raw_items.iter().map(|i| ListItem::new(&**i)).collect()
+            self.raw_items
+                .iter()
+                .map(|i| ListItem::new(&***i))
+                .collect()
         };
 
         let cur = self.current_index();
@@ -195,7 +223,7 @@ impl Menu {
         frame.render_stateful_widget(instance, area, &mut self.state)
     }
 
-    pub fn update<F: FnOnce(&mut Vec<String>)>(&mut self, f: F) {
+    pub fn update<F: FnOnce(&mut Vec<Rc<String>>)>(&mut self, f: F) {
         let old_len = self.raw_items.len();
 
         f(&mut self.raw_items);
@@ -226,6 +254,12 @@ impl Menu {
             format!("/{}", self.search_input)
         }
     }
+
+    pub fn reset_search(&mut self) {
+        self.search_input.clear();
+        self.search_mode = false;
+        self.matched_items_count = None;
+    }
 }
 
 pub struct MenuView {
@@ -234,7 +268,7 @@ pub struct MenuView {
 
 impl MenuView {
     pub fn new<I: Into<Vec<String>>>(items: I) -> Self {
-        let inner = Menu::new(items);
+        let inner = Menu::new(items.into());
 
         Self { inner }
     }
@@ -316,4 +350,16 @@ impl DerefMut for MenuView {
 
 pub fn to_string_vec<'a, A: IntoIterator<Item = &'a str>>(arr: A) -> Vec<String> {
     arr.into_iter().map(|s| s.to_string()).collect()
+}
+
+fn slice(s: &str, start: usize, end: usize) -> Option<&str> {
+    if end < start {
+        return None;
+    }
+
+    let start_index = s.char_indices().nth(start)?.0;
+
+    let end_index = start_index + s[start_index..].char_indices().nth(end - start)?.0;
+
+    Some(&s[start_index..end_index])
 }
