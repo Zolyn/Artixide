@@ -10,18 +10,19 @@ use ratatui::{
 
 use crate::{
     config::Config,
-    tui::{widgets::menu::MenuView, TuiBackend, TuiCommand},
+    tui::{run_command, widgets::menu::MenuView, TuiBackend, TuiCommand},
 };
 
 use super::{vertical_layout, View};
 
 fn get_keyboard_layouts() -> Result<Vec<Rc<String>>> {
-    let output = Command::new("ls")
-        .args(["-lR", "/usr/share/kbd/keymaps"])
-        .output()?
-        .stdout;
+    let mut command = Command::new("ls");
+    command.args(["-lR", "/usr/share/kbd/keymaps"]);
 
-    let mut layouts = String::from_utf8_lossy(&output)
+    let stdout = run_command(&mut command)?.stdout;
+    let output = String::from_utf8_lossy(&stdout);
+
+    let mut layouts = output
         .lines()
         .filter(|line| line.ends_with(".map.gz"))
         .map(|l| {
@@ -78,7 +79,16 @@ impl View<TuiBackend> for Keyboard {
 
                 Some(TuiCommand::ChangeRoute("/".to_string()))
             }
-            KeyCode::Esc | KeyCode::Char('q') => Some(TuiCommand::ChangeRoute("/".to_string())),
+            KeyCode::Esc => {
+                if self.menu.search_mode() {
+                    self.menu.disable_search()
+                }
+
+                Some(TuiCommand::ChangeRoute("/".to_string()))
+            }
+            KeyCode::Char('q') if !self.menu.search_mode() => {
+                Some(TuiCommand::ChangeRoute("/".to_string()))
+            }
             _ => self.menu.on_event(event),
         }
     }

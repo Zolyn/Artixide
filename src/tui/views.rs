@@ -1,6 +1,4 @@
-use std::process::Command;
-
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
@@ -27,14 +25,4 @@ pub fn vertical_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
         .direction(Direction::Vertical)
         .margin(0)
         .constraints(constraints)
-}
-
-pub fn run_command(mut command: Command) -> Result<String> {
-    let output = command.output()?;
-
-    if !output.status.success() {
-        Err(anyhow!(String::from_utf8_lossy(&output.stderr).to_string()))
-    } else {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    }
 }

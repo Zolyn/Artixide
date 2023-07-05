@@ -50,7 +50,7 @@ impl Menu {
         self.state.borrow().selected()
     }
 
-    pub fn next_item(&mut self) {
+    pub fn select_next_item(&self) {
         let cur = self.current_index();
 
         if cur.is_none() {
@@ -61,14 +61,14 @@ impl Menu {
 
         let mut next = cur + 1;
 
-        if next > self.raw_items.len() - 1 {
+        if next > self.items_count() - 1 {
             next = 0;
         }
 
         self.state.borrow_mut().select(Some(next))
     }
 
-    pub fn prev_item(&mut self) {
+    pub fn select_prev_item(&self) {
         let cur = self.current_index();
 
         if cur.is_none() {
@@ -78,7 +78,7 @@ impl Menu {
         let cur = cur.unwrap();
 
         let prev = if cur == 0 {
-            self.raw_items.len() - 1
+            self.items_count() - 1
         } else {
             cur - 1
         };
@@ -86,9 +86,25 @@ impl Menu {
         self.state.borrow_mut().select(Some(prev))
     }
 
+    pub fn select_first_item(&self) {
+        if self.current_index().is_none() {
+            return;
+        }
+
+        self.state.borrow_mut().select(Some(0))
+    }
+
+    pub fn select_last_item(&self) {
+        if self.current_index().is_none() {
+            return;
+        }
+
+        self.state.borrow_mut().select(Some(self.items_count() - 1))
+    }
+
     fn items_count(&self) -> usize {
-        if self.search_mode {
-            0
+        if self.is_searching() {
+            self.matched_items_count.unwrap()
         } else {
             self.raw_items.len()
         }
@@ -130,9 +146,7 @@ impl Menu {
         area: Rect,
         f: F,
     ) {
-        let mut new_state = (false, None);
-
-        let items = if self.search_mode && !self.search_input.is_empty() {
+        let items = if self.is_searching() {
             self.matched_items = self
                 .raw_items
                 .iter()
@@ -208,7 +222,7 @@ impl Menu {
 
             let matched_items_count = matched_items.len();
 
-            new_state = self.get_new_state(
+            self.update_state(
                 matched_items_count,
                 self.matched_items_count.unwrap_or(self.raw_items.len()),
             );
@@ -223,13 +237,7 @@ impl Menu {
                 .collect()
         };
 
-        let (need_update, state) = new_state;
-
-        let cur = if need_update {
-            state
-        } else {
-            self.current_index()
-        };
+        let cur = self.current_index();
 
         if cur.is_none() {
             frame.render_widget(
@@ -243,10 +251,6 @@ impl Menu {
 
         let instance = f(items, cur);
 
-        if need_update {
-            self.update_state(Some(cur))
-        }
-
         frame.render_stateful_widget(instance, area, &mut self.state.borrow_mut())
     }
 
@@ -255,37 +259,25 @@ impl Menu {
 
         f(&mut self.raw_items);
 
-        let (need_update, state) = self.get_new_state(self.raw_items.len(), old_len);
-
-        if need_update {
-            self.update_state(state)
-        }
+        self.update_state(self.raw_items.len(), old_len)
     }
 
-    fn update_state(&self, new_state: Option<usize>) {
+    fn update_state(&self, len: usize, old_len: usize) {
+        if len == old_len {
+            return;
+        }
+
+        let new_state = if len == 0 {
+            None
+        } else {
+            Some(self.current_index().unwrap_or(0).min(len - 1))
+        };
+
         let mut state = self.state.borrow_mut();
+
         // Reset offset and recalculate it when rendering
         *state.offset_mut() = 0;
         state.select(new_state)
-    }
-
-    fn get_new_state(&self, len: usize, old_len: usize) -> (bool, Option<usize>) {
-        let mut need_update = false;
-
-        if len == old_len {
-            return (need_update, None);
-        }
-
-        need_update = true;
-
-        if len == 0 {
-            (need_update, None)
-        } else {
-            (
-                need_update,
-                Some(self.current_index().unwrap_or(0).min(len - 1)),
-            )
-        }
     }
 
     pub fn get_searchbar_text(&self) -> String {
@@ -296,8 +288,15 @@ impl Menu {
         }
     }
 
-    pub fn reset_search(&mut self) {
-        self.search_input.clear();
+    pub fn search_mode(&self) -> bool {
+        self.search_mode
+    }
+
+    fn is_searching(&self) -> bool {
+        self.search_mode && !self.search_input.is_empty()
+    }
+
+    pub fn disable_search(&mut self) {
         self.search_mode = false;
         self.matched_items_count = None;
     }
@@ -317,34 +316,65 @@ impl MenuView {
     pub fn on_event(&mut self, event: KeyEvent) -> Option<TuiCommand> {
         match event.code {
             KeyCode::Up => {
-                self.inner.prev_item();
+                self.inner.select_prev_item();
+
+                if self.is_searching() {
+                    self.already_matched = true;
+                }
+
                 None
             }
             KeyCode::Char('k') => {
                 if self.search_mode {
                     self.search_input.push('k');
+                    self.already_matched = false;
                 } else {
-                    self.inner.prev_item();
+                    self.inner.select_prev_item();
                 }
 
                 None
             }
             KeyCode::Down => {
-                self.inner.next_item();
+                self.inner.select_next_item();
+
+                if self.is_searching() {
+                    self.already_matched = true;
+                }
+
                 None
             }
             KeyCode::Char('j') => {
                 if self.search_mode {
                     self.search_input.push('j');
+                    self.already_matched = false;
                 } else {
-                    self.inner.next_item();
+                    self.inner.select_next_item();
+                }
+
+                None
+            }
+            KeyCode::Home => {
+                self.inner.select_first_item();
+
+                if self.is_searching() {
+                    self.already_matched = true;
+                }
+
+                None
+            }
+            KeyCode::End => {
+                self.inner.select_last_item();
+
+                if self.is_searching() {
+                    self.already_matched = true;
                 }
 
                 None
             }
             KeyCode::Char('/') => {
                 if self.search_mode {
-                    self.search_input.push('/')
+                    self.search_input.push('/');
+                    self.already_matched = false
                 } else {
                     self.search_mode = true;
                 }
@@ -353,7 +383,8 @@ impl MenuView {
             }
             KeyCode::Char(c) => {
                 if self.search_mode {
-                    self.search_input.push(c)
+                    self.search_input.push(c);
+                    self.already_matched = false;
                 }
 
                 None
@@ -364,9 +395,10 @@ impl MenuView {
                 }
 
                 if self.search_input.is_empty() {
-                    self.search_mode = false;
+                    self.disable_search()
                 } else {
                     self.search_input.pop().unwrap();
+                    self.already_matched = false;
                 }
 
                 None
