@@ -1,5 +1,6 @@
 use std::{
-    collections::HashSet,
+    borrow::BorrowMut,
+    cell::RefCell,
     ops::{Deref, DerefMut},
     rc::Rc,
 };
@@ -20,10 +21,10 @@ use crate::tui::TuiCommand;
 #[derive(Default)]
 pub struct Menu {
     raw_items: Vec<Rc<String>>,
-    state: ListState,
+    state: RefCell<ListState>,
     search_mode: bool,
     search_input: String,
-    matched_items: Vec<(Rc<String>, HashSet<usize>)>,
+    matched_items: Vec<(Rc<String>, Vec<usize>)>,
     already_matched: bool,
     fuzzy_matcher: SkimMatcherV2,
     matched_items_count: Option<usize>,
@@ -35,8 +36,8 @@ impl Menu {
 
     pub fn new(items: Vec<String>) -> Self {
         let raw_items = items.into_iter().map(Rc::new).collect();
-        let mut state = ListState::default();
-        state.select(Some(0));
+        let state = RefCell::new(ListState::default());
+        state.borrow_mut().select(Some(0));
 
         Self {
             raw_items,
@@ -46,7 +47,7 @@ impl Menu {
     }
 
     fn current_index(&self) -> Option<usize> {
-        self.state.selected()
+        self.state.borrow().selected()
     }
 
     pub fn next_item(&mut self) {
@@ -64,7 +65,7 @@ impl Menu {
             next = 0;
         }
 
-        self.state.select(Some(next))
+        self.state.borrow_mut().select(Some(next))
     }
 
     pub fn prev_item(&mut self) {
@@ -82,7 +83,7 @@ impl Menu {
             cur - 1
         };
 
-        self.state.select(Some(prev))
+        self.state.borrow_mut().select(Some(prev))
     }
 
     fn items_count(&self) -> usize {
@@ -129,59 +130,73 @@ impl Menu {
         area: Rect,
         f: F,
     ) {
+        let mut new_state = (false, None);
+
         let items = if self.search_mode && !self.search_input.is_empty() {
             self.matched_items = self
                 .raw_items
                 .iter()
                 .filter_map(|i| {
-                    let indices_set: HashSet<usize> = HashSet::from_iter(
-                        self.fuzzy_matcher.fuzzy_indices(i, &self.search_input)?.1,
-                    );
+                    let matched_indices =
+                        self.fuzzy_matcher.fuzzy_indices(i, &self.search_input)?.1;
 
-                    Some((Rc::clone(i), indices_set))
+                    Some((Rc::clone(i), matched_indices))
                 })
                 .collect();
 
-            let items_match = self
+            let matched_items = self
                 .matched_items
                 .iter()
-                .map(|(item, indices_set)| {
+                .map(|(item, matched_indices)| {
                     let mut spans: Vec<Span> = vec![];
 
                     let len = item.chars().count();
                     let mut start = 0;
-                    let mut match_start = 0;
-                    let mut match_len = 1;
+                    let mut match_start: Option<usize> = None;
+                    let mut match_len: Option<usize> = None;
 
-                    for &index in indices_set {
+                    for &index in matched_indices {
                         if start > index {
                             unreachable!("start should always <= index while looping")
                         }
 
                         if start < index {
-                            if match_start != 0 {
+                            if let Some(match_start) = match_start.take() {
+                                let match_len = match_len.take().unwrap();
+
                                 spans.push(Span::styled(
                                     slice(item, match_start, match_start + match_len).unwrap(),
                                     Style::default().bg(Color::Yellow),
                                 ));
-                                match_len = 1;
                             }
 
                             spans.push(Span::raw(slice(item, start, index).unwrap()));
 
+                            match_start = Some(index);
+                            match_len = Some(1);
                             start = index + 1;
-                            match_start = index;
                             continue;
                         }
 
+                        if match_start.is_some() {
+                            *match_len.as_mut().unwrap() += 1;
+                        } else {
+                            assert_eq!(start, 0);
+                            match_start = Some(0);
+                            match_len = Some(1)
+                        }
+
                         start = index + 1;
-                        match_len += 1;
                     }
 
-                    spans.push(Span::styled(
-                        slice(item, match_start, match_start + match_len).unwrap(),
-                        Style::default().bg(Color::Yellow),
-                    ));
+                    if let Some(match_start) = match_start.take() {
+                        let match_len = match_len.take().unwrap();
+
+                        spans.push(Span::styled(
+                            slice(item, match_start, match_start + match_len).unwrap(),
+                            Style::default().bg(Color::Yellow),
+                        ));
+                    }
 
                     if start < len {
                         spans.push(Span::raw(slice(item, start, len).unwrap()))
@@ -191,14 +206,16 @@ impl Menu {
                 })
                 .collect::<Vec<_>>();
 
-            let matched_items_count = items_match.len();
+            let matched_items_count = matched_items.len();
 
-            // self.update_state(matched_items_count, self.matched_items_count.unwrap_or(self.raw_items.len()));
-            // self.update_state(matched_items_count, self.raw_items.len());
+            new_state = self.get_new_state(
+                matched_items_count,
+                self.matched_items_count.unwrap_or(self.raw_items.len()),
+            );
 
             self.matched_items_count = Some(matched_items_count);
 
-            items_match
+            matched_items
         } else {
             self.raw_items
                 .iter()
@@ -206,9 +223,15 @@ impl Menu {
                 .collect()
         };
 
-        let cur = self.current_index();
+        let (need_update, state) = new_state;
 
-        if self.current_index().is_none() {
+        let cur = if need_update {
+            state
+        } else {
+            self.current_index()
+        };
+
+        if cur.is_none() {
             frame.render_widget(
                 List::new([]).block(Block::default().borders(Borders::ALL)),
                 area,
@@ -220,7 +243,11 @@ impl Menu {
 
         let instance = f(items, cur);
 
-        frame.render_stateful_widget(instance, area, &mut self.state)
+        if need_update {
+            self.update_state(Some(cur))
+        }
+
+        frame.render_stateful_widget(instance, area, &mut self.state.borrow_mut())
     }
 
     pub fn update<F: FnOnce(&mut Vec<Rc<String>>)>(&mut self, f: F) {
@@ -228,23 +255,37 @@ impl Menu {
 
         f(&mut self.raw_items);
 
-        self.update_state(self.raw_items.len(), old_len)
+        let (need_update, state) = self.get_new_state(self.raw_items.len(), old_len);
+
+        if need_update {
+            self.update_state(state)
+        }
     }
 
-    fn update_state(&mut self, len: usize, old_len: usize) {
-        if old_len == len {
-            return;
+    fn update_state(&self, new_state: Option<usize>) {
+        let mut state = self.state.borrow_mut();
+        // Reset offset and recalculate it when rendering
+        *state.offset_mut() = 0;
+        state.select(new_state)
+    }
+
+    fn get_new_state(&self, len: usize, old_len: usize) -> (bool, Option<usize>) {
+        let mut need_update = false;
+
+        if len == old_len {
+            return (need_update, None);
         }
 
-        let new_selection = if len == 0 {
-            None
-        } else {
-            Some(self.current_index().unwrap_or(0).min(len - 1))
-        };
+        need_update = true;
 
-        // Reset offset and recalculate it when rendering
-        *self.state.offset_mut() = 0;
-        self.state.select(new_selection)
+        if len == 0 {
+            (need_update, None)
+        } else {
+            (
+                need_update,
+                Some(self.current_index().unwrap_or(0).min(len - 1)),
+            )
+        }
     }
 
     pub fn get_searchbar_text(&self) -> String {
@@ -358,6 +399,10 @@ fn slice(s: &str, start: usize, end: usize) -> Option<&str> {
     }
 
     let start_index = s.char_indices().nth(start)?.0;
+
+    if end == s.chars().count() {
+        return Some(&s[start_index..]);
+    }
 
     let end_index = start_index + s[start_index..].char_indices().nth(end - start)?.0;
 

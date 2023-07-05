@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{process::Command, rc::Rc};
 
 use anyhow::{Context, Result};
 use crossterm::event::KeyCode;
@@ -15,7 +15,7 @@ use crate::{
 
 use super::{vertical_layout, View};
 
-fn get_keyboard_layouts() -> Result<Vec<String>> {
+fn get_keyboard_layouts() -> Result<Vec<Rc<String>>> {
     let output = Command::new("ls")
         .args(["-lR", "/usr/share/kbd/keymaps"])
         .output()?
@@ -25,11 +25,14 @@ fn get_keyboard_layouts() -> Result<Vec<String>> {
         .lines()
         .filter(|line| line.ends_with(".map.gz"))
         .map(|l| {
-            l.split(' ')
+            let layout = l
+                .split(' ')
                 .last()
                 .unwrap()
                 .trim_end_matches(".map.gz")
-                .to_string()
+                .to_string();
+
+            Rc::new(layout)
         })
         .collect::<Vec<_>>();
 
@@ -41,6 +44,7 @@ fn get_keyboard_layouts() -> Result<Vec<String>> {
 pub struct Keyboard {
     menu: MenuView,
     layout: Layout,
+    need_update: bool,
 }
 
 impl Keyboard {
@@ -53,7 +57,11 @@ impl Keyboard {
 
         let menu = MenuView::new([]);
 
-        Self { layout, menu }
+        Self {
+            layout,
+            menu,
+            need_update: true,
+        }
     }
 }
 
@@ -66,6 +74,7 @@ impl View<TuiBackend> for Keyboard {
         match event.code {
             KeyCode::Enter => {
                 config.keyboard_layout = self.menu.current_item()?.to_string();
+                self.need_update = true;
 
                 Some(TuiCommand::ChangeRoute("/".to_string()))
             }
@@ -79,7 +88,13 @@ impl View<TuiBackend> for Keyboard {
 
         let _layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
 
-        // self.menu.update(|items| *items = layouts);
+        if self.need_update {
+            let layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
+
+            self.menu.update(|items| *items = layouts);
+
+            self.need_update = false;
+        }
 
         self.menu.render(frame, chunks[1]);
 
