@@ -127,7 +127,7 @@ impl Menu {
                     let style = Style::default();
 
                     if index == selected_index {
-                        item.style(style.fg(Color::White).bg(Color::LightBlue))
+                        item.style(style.bg(Color::LightBlue))
                     } else {
                         item.style(style)
                     }
@@ -138,7 +138,7 @@ impl Menu {
 
             list.block(Block::default().borders(Borders::ALL))
                 .highlight_symbol("> ")
-                .highlight_style(Style::default().fg(Color::White))
+                .highlight_style(Style::default())
         });
     }
 

@@ -23,11 +23,12 @@ fn get_grouped_mirrors() -> Result<Vec<(String, Vec<String>)>> {
         .skip_while(|line| !line.contains("Default mirrors"))
         .skip(1)
     {
-        if line.starts_with("Server") {
-            servers.push(line.trim_start_matches("Server = ").to_owned())
-        } else if line.starts_with("# ") {
+        if let Some(server) = line.strip_prefix("Server = ") {
+            // remove "$repo/os/$arch"
+            servers.push(server[..server.len() - 14].to_owned())
+        } else if let Some(g) = line.strip_prefix("# ") {
             result.push((
-                mem::replace(&mut group, line.trim_start_matches("# ").to_owned()),
+                mem::replace(&mut group, g.to_owned()),
                 mem::take(&mut servers),
             ))
         }
@@ -138,12 +139,9 @@ impl View<TuiBackend> for Mirror {
 
         let mut menu_area: Rect = chunks[1];
 
-        match self.tab {
-            MenuTab::MirrorType => {
-                menu_area = vertical_layout([Constraint::Length(4), Constraint::Min(1)])
-                    .split(chunks[1])[0];
-            }
-            _ => {}
+        if let MenuTab::MirrorType = self.tab {
+            menu_area =
+                vertical_layout([Constraint::Length(4), Constraint::Min(1)]).split(chunks[1])[0];
         }
 
         let menu: &mut MenuView = self.get_menu_mut();
