@@ -119,35 +119,6 @@ impl Menu {
     }
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>, area: Rect) {
-        self.render_with(frame, area, |items, selected_index| {
-            let items = items
-                .into_iter()
-                .enumerate()
-                .map(|(index, item)| {
-                    let style = Style::default();
-
-                    if index == selected_index {
-                        item.style(style.bg(Color::LightBlue))
-                    } else {
-                        item.style(style)
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            let list = widgets::List::new(items);
-
-            list.block(Block::default().borders(Borders::ALL))
-                .highlight_symbol("> ")
-                .highlight_style(Style::default())
-        });
-    }
-
-    pub fn render_with<B: Backend, F: Fn(Vec<ListItem>, usize) -> widgets::List>(
-        &mut self,
-        frame: &mut Frame<B>,
-        area: Rect,
-        f: F,
-    ) {
         let items = if self.is_searching() {
             if !self.already_matched {
                 self.matched_items = self
@@ -221,7 +192,7 @@ impl Menu {
                         spans.push(Span::raw(slice(item, start, len).unwrap()))
                     }
 
-                    ListItem::new(Line::from(spans))
+                    spans
                 })
                 .collect::<Vec<_>>();
 
@@ -239,7 +210,7 @@ impl Menu {
             let items = self
                 .raw_items
                 .iter()
-                .map(|i| ListItem::new(i.as_str()))
+                .map(|i| vec![Span::raw(i.as_str())])
                 .collect();
 
             // Update state if previous match has nothing
@@ -263,9 +234,29 @@ impl Menu {
 
         let cur = cur.unwrap();
 
-        let instance = f(items, cur);
+        let items = items
+            .into_iter()
+            .enumerate()
+            .map(|(index, mut spans)| {
+                if index == cur {
+                    for span in spans.iter_mut() {
+                        span.style.bg.get_or_insert(Color::LightBlue);
+                        // FIXME: Upstream bug?
+                        // Werid behavior in TTY when set color to white
+                        span.style.fg.insert(Color::White);
+                    }
+                }
 
-        frame.render_stateful_widget(instance, area, &mut self.state.borrow_mut())
+                ListItem::new(Line::from(spans))
+            })
+            .collect::<Vec<_>>();
+
+        let list = widgets::List::new(items)
+            .block(Block::default().borders(Borders::ALL))
+            .highlight_symbol("> ")
+            .highlight_style(Style::default());
+
+        frame.render_stateful_widget(list, area, &mut self.state.borrow_mut())
     }
 
     pub fn update_items<F: FnOnce(&mut Vec<Rc<String>>)>(&mut self, f: F) {

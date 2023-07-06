@@ -60,6 +60,7 @@ fn close(terminal: &mut Terminal<TuiBackend>, is_tty: bool) -> Result<()> {
     disable_raw_mode()?;
 
     if is_tty {
+        // FIXME
         terminal.clear()?;
     } else {
         execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
