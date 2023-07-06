@@ -12,6 +12,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::config::Config;
@@ -20,6 +21,8 @@ use self::views::{keyboard::Keyboard, main::Main, mirror::Mirror, View};
 
 mod views;
 mod widgets;
+
+thread_local! {static FUZZY_MATCHER: SkimMatcherV2 = SkimMatcherV2::default()}
 
 pub enum Operation {
     SaveAs(PathBuf),
@@ -95,7 +98,7 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
     let mut route = "/".to_string();
 
     loop {
-        let view = route_map.get_mut(&*route).unwrap();
+        let view = route_map.get_mut(route.as_str()).unwrap();
 
         let command = render_view(&mut terminal, view, config).map_err(|err| {
             if let Err(e) = close(&mut terminal, is_tty) {

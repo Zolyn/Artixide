@@ -1,12 +1,8 @@
-use std::{process::Command, rc::Rc};
+use std::process::Command;
 
 use anyhow::{Context, Result};
 use crossterm::event::KeyCode;
-use ratatui::{
-    layout::{Constraint, Layout},
-    text::{Line, Span},
-    widgets::Paragraph,
-};
+use ratatui::layout::{Constraint, Layout};
 
 use crate::{
     config::Config,
@@ -15,7 +11,7 @@ use crate::{
 
 use super::{vertical_layout, View};
 
-fn get_keyboard_layouts() -> Result<Vec<Rc<String>>> {
+fn get_keyboard_layouts() -> Result<Vec<String>> {
     let mut command = Command::new("ls");
     command.args(["-lR", "/usr/share/kbd/keymaps"]);
 
@@ -26,14 +22,11 @@ fn get_keyboard_layouts() -> Result<Vec<Rc<String>>> {
         .lines()
         .filter(|line| line.ends_with(".map.gz"))
         .map(|l| {
-            let layout = l
-                .split(' ')
+            l.split(' ')
                 .last()
                 .unwrap()
                 .trim_end_matches(".map.gz")
-                .to_string();
-
-            Rc::new(layout)
+                .to_string()
         })
         .collect::<Vec<_>>();
 
@@ -75,7 +68,6 @@ impl View<TuiBackend> for Keyboard {
         match event.code {
             KeyCode::Enter => {
                 config.keyboard_layout = self.menu.current_item()?.to_string();
-                self.need_update = true;
 
                 Some(TuiCommand::ChangeRoute("/".to_string()))
             }
@@ -96,23 +88,17 @@ impl View<TuiBackend> for Keyboard {
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         let chunks = self.layout.split(frame.size());
 
-        let _layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
-
         if self.need_update {
             let layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
 
-            self.menu.update(|items| *items = layouts);
+            self.menu.replace_items(layouts);
 
             self.need_update = false;
         }
 
         self.menu.render(frame, chunks[1]);
 
-        let search_text = Line::from(vec![Span::raw(self.menu.get_searchbar_text())]);
-
-        let searchbar = Paragraph::new(search_text);
-
-        frame.render_widget(searchbar, chunks[2]);
+        self.menu.render_searchbar(frame, chunks[2]);
 
         Ok(())
     }

@@ -1,22 +1,21 @@
 use std::{
-    borrow::BorrowMut,
     cell::RefCell,
     ops::{Deref, DerefMut},
     rc::Rc,
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::FuzzyMatcher;
 use ratatui::{
     backend::Backend,
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{self, Block, Borders, List, ListItem, ListState},
+    widgets::{self, Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 
-use crate::tui::TuiCommand;
+use crate::tui::{TuiCommand, FUZZY_MATCHER};
 
 #[derive(Default)]
 pub struct Menu {
@@ -26,7 +25,6 @@ pub struct Menu {
     search_input: String,
     matched_items: Vec<(Rc<String>, Vec<usize>)>,
     already_matched: bool,
-    fuzzy_matcher: SkimMatcherV2,
     matched_items_count: Option<usize>,
 }
 
@@ -113,7 +111,11 @@ impl Menu {
     pub fn current_item(&self) -> Option<&str> {
         let cur = self.current_index()?;
 
-        Some(&self.raw_items[cur])
+        if self.is_searching() {
+            Some(self.matched_items[cur].0.as_str())
+        } else {
+            Some(self.raw_items[cur].as_str())
+        }
     }
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>, area: Rect) {
@@ -147,16 +149,19 @@ impl Menu {
         f: F,
     ) {
         let items = if self.is_searching() {
-            self.matched_items = self
-                .raw_items
-                .iter()
-                .filter_map(|i| {
-                    let matched_indices =
-                        self.fuzzy_matcher.fuzzy_indices(i, &self.search_input)?.1;
+            if !self.already_matched {
+                self.matched_items = self
+                    .raw_items
+                    .iter()
+                    .filter_map(|i| {
+                        let matched_indices = FUZZY_MATCHER
+                            .with(|m| m.fuzzy_indices(i, &self.search_input))?
+                            .1;
 
-                    Some((Rc::clone(i), matched_indices))
-                })
-                .collect();
+                        Some((Rc::clone(i), matched_indices))
+                    })
+                    .collect();
+            }
 
             let matched_items = self
                 .matched_items
@@ -231,10 +236,19 @@ impl Menu {
 
             matched_items
         } else {
-            self.raw_items
+            let items = self
+                .raw_items
                 .iter()
-                .map(|i| ListItem::new(&***i))
-                .collect()
+                .map(|i| ListItem::new(i.as_str()))
+                .collect();
+
+            // Update state if previous match has nothing
+            // When there is nothing matched, the state will be None
+            if self.search_mode && self.matched_items.is_empty() {
+                self.update_state(self.raw_items.len(), 0)
+            }
+
+            items
         };
 
         let cur = self.current_index();
@@ -254,12 +268,17 @@ impl Menu {
         frame.render_stateful_widget(instance, area, &mut self.state.borrow_mut())
     }
 
-    pub fn update<F: FnOnce(&mut Vec<Rc<String>>)>(&mut self, f: F) {
+    pub fn update_items<F: FnOnce(&mut Vec<Rc<String>>)>(&mut self, f: F) {
         let old_len = self.raw_items.len();
 
         f(&mut self.raw_items);
 
         self.update_state(self.raw_items.len(), old_len)
+    }
+
+    pub fn replace_items(&mut self, items: Vec<String>) {
+        let new_items = items.into_iter().map(Rc::new).collect();
+        self.update_items(|i| *i = new_items)
     }
 
     fn update_state(&self, len: usize, old_len: usize) {
@@ -286,6 +305,14 @@ impl Menu {
         } else {
             format!("/{}", self.search_input)
         }
+    }
+
+    pub fn render_searchbar<B: Backend>(&self, frame: &mut Frame<B>, area: Rect) {
+        let search_text = Line::from(vec![Span::raw(self.get_searchbar_text())]);
+
+        let searchbar = Paragraph::new(search_text);
+
+        frame.render_widget(searchbar, area)
     }
 
     pub fn search_mode(&self) -> bool {
@@ -395,10 +422,14 @@ impl MenuView {
                 }
 
                 if self.search_input.is_empty() {
-                    self.disable_search()
+                    self.search_mode = false;
                 } else {
                     self.search_input.pop().unwrap();
                     self.already_matched = false;
+
+                    if self.search_input.is_empty() {
+                        self.matched_items_count = None;
+                    }
                 }
 
                 None
