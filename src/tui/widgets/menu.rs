@@ -29,8 +29,8 @@ pub struct Menu {
 }
 
 impl Menu {
-    pub const SEARCH_TIP: &'static str = r#"(Press "/" to search)"#;
-    pub const NAVIGATION_TIP: &'static str = "j, k, Up, Down to move";
+    pub const SEARCH_TIP: &str = r#"(Press "/" to search)"#;
+    pub const NAVIGATION_TIP: &str = "j, k, Up, Down to move";
 
     pub fn new(items: Vec<String>) -> Self {
         let raw_items = items.into_iter().map(Rc::new).collect();
@@ -137,7 +137,7 @@ impl Menu {
                     .iter()
                     .filter_map(|i| {
                         let matched_indices = FUZZY_MATCHER
-                            .with(|m| m.fuzzy_indices(i, &self.search_input))?
+                            .with(|m| m.fuzzy_indices(f(i).as_ref(), &self.search_input))?
                             .1;
 
                         Some((Rc::clone(i), matched_indices))
