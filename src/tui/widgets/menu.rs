@@ -108,17 +108,28 @@ impl Menu {
         }
     }
 
-    pub fn current_item(&self) -> Option<&str> {
+    pub fn current_item(&self) -> Option<Rc<String>> {
         let cur = self.current_index()?;
 
-        if self.is_searching() {
-            Some(self.matched_items[cur].0.as_str())
+        let item = if self.is_searching() {
+            Rc::clone(&self.matched_items[cur].0)
         } else {
-            Some(self.raw_items[cur].as_str())
-        }
+            Rc::clone(&self.raw_items[cur])
+        };
+
+        Some(item)
     }
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>, area: Rect) {
+        self.render_with(frame, area, |s| s.as_ref());
+    }
+
+    pub fn render_with<B: Backend, F: Fn(&Rc<String>) -> &I, I: AsRef<str> + ?Sized>(
+        &mut self,
+        frame: &mut Frame<B>,
+        area: Rect,
+        f: F,
+    ) {
         let items = if self.is_searching() {
             if !self.already_matched {
                 self.matched_items = self
@@ -138,6 +149,7 @@ impl Menu {
                 .matched_items
                 .iter()
                 .map(|(item, matched_indices)| {
+                    let item = f(item).as_ref();
                     let mut spans: Vec<Span> = vec![];
 
                     let len = item.chars().count();
@@ -210,7 +222,7 @@ impl Menu {
             let items = self
                 .raw_items
                 .iter()
-                .map(|i| vec![Span::raw(i.as_str())])
+                .map(|i| vec![Span::raw(f(i).as_ref())])
                 .collect();
 
             // Update state if previous match has nothing
@@ -243,7 +255,7 @@ impl Menu {
                         span.style.bg.get_or_insert(Color::LightBlue);
                         // FIXME: Upstream bug?
                         // Werid behavior in TTY when set color to white
-                        span.style.fg.insert(Color::White);
+                        // span.style.fg.insert(Color::White);
                     }
                 }
 
@@ -267,9 +279,13 @@ impl Menu {
         self.update_state(self.raw_items.len(), old_len)
     }
 
-    pub fn replace_items(&mut self, items: Vec<String>) {
+    pub fn replace_items_with(&mut self, items: Vec<String>) {
         let new_items = items.into_iter().map(Rc::new).collect();
         self.update_items(|i| *i = new_items)
+    }
+
+    pub fn replace_items(&mut self, items: Vec<Rc<String>>) {
+        self.update_items(|i| *i = items)
     }
 
     fn update_state(&self, len: usize, old_len: usize) {

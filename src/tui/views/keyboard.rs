@@ -69,18 +69,16 @@ impl View<TuiBackend> for Keyboard {
             KeyCode::Enter => {
                 config.keyboard_layout = self.menu.current_item()?.to_string();
 
-                Some(TuiCommand::ChangeRoute("/".to_string()))
+                Some(TuiCommand::BackToMain)
             }
             KeyCode::Esc => {
                 if self.menu.search_mode() {
                     self.menu.disable_search()
                 }
 
-                Some(TuiCommand::ChangeRoute("/".to_string()))
+                Some(TuiCommand::BackToMain)
             }
-            KeyCode::Char('q') if !self.menu.search_mode() => {
-                Some(TuiCommand::ChangeRoute("/".to_string()))
-            }
+            KeyCode::Char('q') if !self.menu.search_mode() => Some(TuiCommand::BackToMain),
             _ => self.menu.on_event(event),
         }
     }
@@ -91,7 +89,7 @@ impl View<TuiBackend> for Keyboard {
         if self.need_update {
             let layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
 
-            self.menu.replace_items(layouts);
+            self.menu.replace_items_with(layouts);
 
             self.need_update = false;
         }

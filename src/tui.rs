@@ -33,6 +33,7 @@ pub enum Operation {
 pub enum TuiCommand {
     Close(Operation),
     ChangeRoute(String),
+    BackToMain,
 }
 
 type TuiBackend = CrosstermBackend<Stdout>;
@@ -111,6 +112,7 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
 
         match command {
             TuiCommand::ChangeRoute(r) => route = r,
+            TuiCommand::BackToMain => route = "/".to_string(),
             TuiCommand::Close(operation) => {
                 close(&mut terminal, is_tty).context("Close Tui")?;
                 break Ok(operation);
