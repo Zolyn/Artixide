@@ -4,6 +4,9 @@ use anyhow::Result;
 use crossterm::event::KeyCode;
 use indoc::{formatdoc, indoc};
 use ratatui::layout::{Constraint, Layout, Rect};
+use regex::Regex;
+
+thread_local! {static URL_RE: Regex = Regex::new(r"https?://(?<host>([a-z0-9-]+\.)+[a-z]+)/.*").unwrap()}
 
 use crate::tui::{
     widgets::menu::{to_string_vec, MenuView},
@@ -208,8 +211,16 @@ impl View<TuiBackend> for Mirror {
         match tab {
             MenuTab::MirrorGroup => menu.render_with(frame, menu_area, |i| &i[2..]),
             MenuTab::SingleMirror => menu.render_with(frame, menu_area, |i| {
-                let len = i.len();
-                &i[9..len - 14]
+                let url = &i[9..];
+                let range = URL_RE.with(|re| {
+                    let caps = re
+                        .captures(url)
+                        .expect("url should be matched without errors");
+
+                    caps.name("host").unwrap().range()
+                });
+
+                &url[range]
             }),
             MenuTab::MirrorType => menu.render(frame, menu_area),
         }
