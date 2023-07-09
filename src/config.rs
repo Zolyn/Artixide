@@ -1,6 +1,6 @@
 use self::locale::LocaleConfig;
 
-mod locale;
+pub mod locale;
 
 #[derive(Debug, Default)]
 pub struct Config {
