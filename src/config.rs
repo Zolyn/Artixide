@@ -1,9 +1,12 @@
+use self::locale::LocaleConfig;
+
+mod locale;
+
 #[derive(Debug, Default)]
 pub struct Config {
     pub keyboard_layout: String,
     pub mirror: String,
-    pub locale_lang: String,
-    pub locale_encoding: String,
+    pub locale: LocaleConfig,
 }
 
 impl Config {

@@ -26,6 +26,7 @@ pub struct Menu {
     matched_items: Vec<(Rc<String>, Vec<usize>)>,
     already_matched: bool,
     matched_items_count: Option<usize>,
+    pub border_style: Option<Style>,
 }
 
 impl Menu {
@@ -124,11 +125,11 @@ impl Menu {
         self.render_with(frame, area, |s| s.as_ref());
     }
 
-    pub fn render_with<B: Backend, F: Fn(&Rc<String>) -> &I, I: AsRef<str> + ?Sized>(
+    pub fn render_with<B: Backend, M: Fn(&Rc<String>) -> &I, I: AsRef<str> + ?Sized>(
         &mut self,
         frame: &mut Frame<B>,
         area: Rect,
-        f: F,
+        item_map_fn: M,
     ) {
         let items = if self.is_searching() {
             if !self.already_matched {
@@ -137,7 +138,7 @@ impl Menu {
                     .iter()
                     .filter_map(|i| {
                         let matched_indices = FUZZY_MATCHER
-                            .with(|m| m.fuzzy_indices(f(i).as_ref(), &self.search_input))?
+                            .with(|m| m.fuzzy_indices(item_map_fn(i).as_ref(), &self.search_input))?
                             .1;
 
                         Some((Rc::clone(i), matched_indices))
@@ -149,7 +150,7 @@ impl Menu {
                 .matched_items
                 .iter()
                 .map(|(item, matched_indices)| {
-                    let item = f(item).as_ref();
+                    let item = item_map_fn(item).as_ref();
                     let mut spans: Vec<Span> = vec![];
 
                     let len = item.chars().count();
@@ -222,7 +223,7 @@ impl Menu {
             let items = self
                 .raw_items
                 .iter()
-                .map(|i| vec![Span::raw(f(i).as_ref())])
+                .map(|i| vec![Span::raw(item_map_fn(i).as_ref())])
                 .collect();
 
             // Update state if previous match has nothing
@@ -238,7 +239,11 @@ impl Menu {
 
         if cur.is_none() {
             frame.render_widget(
-                List::new([]).block(Block::default().borders(Borders::ALL)),
+                List::new([]).block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(self.border_style.unwrap_or_default()),
+                ),
                 area,
             );
             return;
@@ -264,7 +269,11 @@ impl Menu {
             .collect::<Vec<_>>();
 
         let list = widgets::List::new(items)
-            .block(Block::default().borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(self.border_style.unwrap_or_default()),
+            )
             .highlight_symbol("> ")
             .highlight_style(Style::default());
 

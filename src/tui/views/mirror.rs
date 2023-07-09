@@ -1,8 +1,9 @@
 use std::{fs, mem, rc::Rc};
 
-use anyhow::Result;
+use color_eyre::Result;
 use crossterm::event::KeyCode;
 use indoc::{formatdoc, indoc};
+use log::error;
 use ratatui::layout::{Constraint, Layout, Rect};
 use regex::Regex;
 
@@ -32,8 +33,6 @@ fn get_grouped_mirrors() -> Result<Vec<GroupedMirror>> {
         .skip(1)
     {
         if line.starts_with("Server") {
-            // remove "$repo/os/$arch" 14
-            // remove "Server = " 9
             servers.push(Rc::new(line.to_owned()))
         } else if line.starts_with("# ") {
             result.push((
@@ -172,7 +171,7 @@ impl View<TuiBackend> for Mirror {
         }
     }
 
-    fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> anyhow::Result<()> {
+    fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         let chunks = self.layout.split(frame.size());
 
         let tab = self.tab;
@@ -213,11 +212,14 @@ impl View<TuiBackend> for Mirror {
             MenuTab::SingleMirror => menu.render_with(frame, menu_area, |i| {
                 let url = &i[9..];
                 let range = URL_RE.with(|re| {
-                    let caps = re
-                        .captures(url)
-                        .expect("url should be matched without errors");
+                    let caps = re.captures(url);
 
-                    caps.name("host").unwrap().range()
+                    if let Some(caps) = caps {
+                        caps.name("host").unwrap().range()
+                    } else {
+                        error!("Failed to match url {}, fallback to full url", url);
+                        0..url.len() - 1
+                    }
                 });
 
                 &url[range]

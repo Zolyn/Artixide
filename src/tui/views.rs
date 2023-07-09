@@ -1,4 +1,4 @@
-use anyhow::Result;
+use color_eyre::Result;
 use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
@@ -11,6 +11,7 @@ use crate::config::Config;
 use super::TuiCommand;
 
 pub mod keyboard;
+pub mod locale;
 pub mod main;
 pub mod mirror;
 
@@ -19,10 +20,17 @@ pub trait View<B: Backend> {
     fn on_event(&mut self, event: KeyEvent, config: &mut Config) -> Option<TuiCommand>;
 }
 
-pub fn vertical_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
-    let constraints: Vec<Constraint> = constraints.into();
+fn make_layout(constraints: Vec<Constraint>, direction: Direction) -> Layout {
     Layout::default()
-        .direction(Direction::Vertical)
+        .direction(direction)
         .margin(0)
         .constraints(constraints)
+}
+
+pub fn vertical_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
+    make_layout(constraints.into(), Direction::Vertical)
+}
+
+pub fn horizontal_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
+    make_layout(constraints.into(), Direction::Horizontal)
 }

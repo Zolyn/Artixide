@@ -3,26 +3,37 @@ use std::{
     env,
     io::{self, Stdout},
     path::PathBuf,
-    process::{Command, Output},
+    process::Command,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
-use anyhow::{anyhow, Context, Result};
+use color_eyre::{
+    eyre::{eyre, Context},
+    Help, Result, SectionExt,
+};
 use crossterm::{
+    cursor,
     event::{self, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use fuzzy_matcher::skim::SkimMatcherV2;
+use log::info;
 use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::config::Config;
 
-use self::views::{keyboard::Keyboard, main::Main, mirror::Mirror, View};
+use self::views::{keyboard::Keyboard, locale::Locale, main::Main, mirror::Mirror, View};
 
 mod views;
 mod widgets;
 
-thread_local! {static FUZZY_MATCHER: SkimMatcherV2 = SkimMatcherV2::default()}
+thread_local! {
+    static FUZZY_MATCHER: SkimMatcherV2 = SkimMatcherV2::default();
+}
+
+static IS_TTY: AtomicBool = AtomicBool::new(false);
+pub static TUI_RUNNING: AtomicBool = AtomicBool::new(true);
 
 pub enum Operation {
     SaveAs(PathBuf),
@@ -57,17 +68,19 @@ fn init(is_tty: bool) -> Result<Terminal<TuiBackend>> {
     Ok(terminal)
 }
 
-fn close(terminal: &mut Terminal<TuiBackend>, is_tty: bool) -> Result<()> {
+pub fn destroy() -> Result<()> {
+    info!("Destructing terminal");
     disable_raw_mode()?;
 
-    if is_tty {
-        // FIXME
-        terminal.clear()?;
-    } else {
-        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    let mut stdout = io::stdout();
+
+    let is_tty = IS_TTY.load(Ordering::SeqCst);
+
+    if !is_tty {
+        execute!(stdout, LeaveAlternateScreen)?;
     }
 
-    terminal.show_cursor()?;
+    execute!(stdout, cursor::Show)?;
 
     Ok(())
 }
@@ -84,15 +97,19 @@ fn is_tty() -> Result<bool> {
 }
 
 pub fn guide(config: &mut Config) -> Result<Operation> {
-    let is_tty = is_tty().context("Check tty")?;
-    let mut terminal = init(is_tty).context("Init Tui")?;
+    let is_tty = is_tty().wrap_err("Check tty")?;
 
-    let _close_tui = false;
+    IS_TTY
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(is_tty))
+        .unwrap();
+
+    let mut terminal = init(is_tty).wrap_err("Init Tui")?;
 
     let routes: Vec<(&'static str, Box<dyn View<TuiBackend>>)> = vec![
         ("/", Box::new(Main::new())),
         ("/keyboard_layout", Box::new(Keyboard::new())),
         ("/mirror", Box::new(Mirror::new())),
+        ("/locale", Box::new(Locale::new())),
     ];
 
     let mut route_map: HashMap<&'static str, Box<dyn View<TuiBackend>>> =
@@ -102,19 +119,19 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
     loop {
         let view = route_map.get_mut(route.as_str()).unwrap();
 
-        let command = render_view(&mut terminal, view, config).map_err(|err| {
-            if let Err(e) = close(&mut terminal, is_tty) {
-                err.context(format!("Close Tui: {}", e))
-            } else {
-                err
-            }
-        })?;
+        let command = render_view(&mut terminal, view, config)
+            .wrap_err_with(|| eyre!("Failed to render view: {}", route))
+            .unwrap();
 
         match command {
             TuiCommand::ChangeRoute(r) => route = r,
             TuiCommand::BackToMain => route = "/".to_string(),
             TuiCommand::Close(operation) => {
-                close(&mut terminal, is_tty).context("Close Tui")?;
+                destroy().wrap_err("Close Tui")?;
+
+                TUI_RUNNING
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(false))
+                    .unwrap();
                 break Ok(operation);
             }
         }
@@ -126,7 +143,7 @@ fn render_view(
     view: &mut Box<dyn View<TuiBackend>>,
     config: &mut Config,
 ) -> Result<TuiCommand> {
-    let mut render_error: Option<anyhow::Error> = None;
+    let mut render_error: Option<color_eyre::Report> = None;
 
     loop {
         terminal.draw(|f| {
@@ -149,18 +166,18 @@ fn render_view(
     }
 }
 
-fn run_command(command: &mut Command) -> Result<Output> {
+fn run_command(command: &mut Command) -> Result<String> {
     let output = command.output()?;
 
-    if output.status.success() {
-        Ok(output)
-    } else {
-        let err = if !output.stderr.is_empty() {
-            output.stderr
-        } else {
-            output.stdout
-        };
+    let stdout = String::from_utf8_lossy(&output.stdout);
 
-        Err(anyhow!(String::from_utf8_lossy(&err).to_string()))
+    if output.status.success() {
+        return Ok(stdout.into());
     }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    Err(eyre!("Command execution failure")
+        .with_section(|| stdout.trim().to_string().header("Stdout"))
+        .with_section(|| stderr.trim().to_string().header("Stderr")))
 }

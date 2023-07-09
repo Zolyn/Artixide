@@ -1,4 +1,4 @@
-use anyhow::Result;
+use color_eyre::Result;
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -33,8 +33,7 @@ impl Main {
             let items = to_string_vec([
                 "Keyboard layout",
                 "Mirror",
-                "Locale language",
-                "Locale encoding",
+                "Locale",
                 // "Drives",
                 "Bootloader",
                 // "Swap",

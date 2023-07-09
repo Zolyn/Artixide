@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use anyhow::{Context, Result};
+use color_eyre::{eyre::Context, Result};
 use crossterm::event::KeyCode;
 use ratatui::layout::{Constraint, Layout};
 
@@ -15,10 +15,9 @@ fn get_keyboard_layouts() -> Result<Vec<String>> {
     let mut command = Command::new("ls");
     command.args(["-lR", "/usr/share/kbd/keymaps"]);
 
-    let stdout = run_command(&mut command)?.stdout;
-    let output = String::from_utf8_lossy(&stdout);
+    let stdout = run_command(&mut command)?;
 
-    let mut layouts = output
+    let mut layouts = stdout
         .lines()
         .filter(|line| line.ends_with(".map.gz"))
         .map(|l| {
@@ -87,7 +86,7 @@ impl View<TuiBackend> for Keyboard {
         let chunks = self.layout.split(frame.size());
 
         if self.need_update {
-            let layouts = get_keyboard_layouts().context("Get keyboard layouts")?;
+            let layouts = get_keyboard_layouts().wrap_err("Get keyboard layouts")?;
 
             self.menu.replace_items_with(layouts);
 
