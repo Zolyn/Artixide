@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 color-eyre = { version = "0.6.2", default-features = false }
 crossterm = "0.26.1"
+derive_setters = "0.1.6"
 fuzzy-matcher = "0.3.7"
 indoc = "2.0.2"
 log = "0.4.19"

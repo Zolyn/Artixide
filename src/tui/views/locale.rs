@@ -117,11 +117,11 @@ impl View<TuiBackend> for Locale {
 
             let menu = &mut self.menus[LocaleTab::Lang as usize];
 
-            menu.replace_items_with(langs);
+            menu.title("Lang").replace_items_with(langs);
 
             let menu = &mut self.menus[LocaleTab::Encoding as usize];
 
-            menu.replace_items_with(encodings);
+            menu.title("Encoding").replace_items_with(encodings);
 
             self.need_update = false;
         }
@@ -129,20 +129,20 @@ impl View<TuiBackend> for Locale {
         let h_chunks = self.h_layout.split(v_chunks[1]);
 
         let [lang, enc] = &mut self.menus;
-        let focus_style = Style::default().fg(Color::White);
+        let _focus_style = Style::default().fg(Color::LightBlue);
 
-        match self.tab {
-            LocaleTab::Lang => {
-                lang.border_style = Some(focus_style);
+        // match self.tab {
+        //     LocaleTab::Lang => {
+        //         lang.border_style(focus_style);
 
-                enc.border_style.take();
-            }
-            LocaleTab::Encoding => {
-                enc.border_style = Some(focus_style);
+        //         enc.border_style.take();
+        //     }
+        //     LocaleTab::Encoding => {
+        //         enc.border_style(focus_style);
 
-                lang.border_style.take();
-            }
-        }
+        //         lang.border_style.take();
+        //     }
+        // }
 
         lang.render(frame, h_chunks[0]);
         enc.render(frame, h_chunks[1]);

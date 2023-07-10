@@ -10,6 +10,8 @@ use log::debug;
 use sudo::RunningAs;
 use tui::TUI_RUNNING;
 
+use crate::app::save_log;
+
 mod app;
 mod config;
 mod tui;
@@ -54,7 +56,7 @@ fn main() -> Result<()> {
             tui::destroy().unwrap();
         }
 
-        tui_logger::move_events();
+        save_log();
         hook(info)
     }));
 

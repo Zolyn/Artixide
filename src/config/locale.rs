@@ -10,8 +10,7 @@ impl Default for LocaleConfig {
         Self {
             lang: "en_US".to_string(),
             encoding: "UTF-8".to_string(),
-            modifier: String::new()
-
+            modifier: String::new(),
         }
     }
 }

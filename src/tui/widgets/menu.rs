@@ -5,19 +5,26 @@ use std::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
+use derive_setters::Setters;
 use fuzzy_matcher::FuzzyMatcher;
 use ratatui::{
     backend::Backend,
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{self, Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{self, Block, List, ListItem, ListState, Padding, Paragraph},
     Frame,
 };
 
-use crate::tui::{TuiCommand, FUZZY_MATCHER};
+use crate::{
+    build_styled_widget, set_if,
+    tui::{TuiCommand, FUZZY_MATCHER},
+};
 
-#[derive(Default)]
+use super::customs::block_style::BlockStyle;
+
+#[derive(Default, Setters)]
+#[setters(generate_private = false, strip_option, borrow_self)]
 pub struct Menu {
     raw_items: Vec<Rc<String>>,
     state: RefCell<ListState>,
@@ -26,7 +33,9 @@ pub struct Menu {
     matched_items: Vec<(Rc<String>, Vec<usize>)>,
     already_matched: bool,
     matched_items_count: Option<usize>,
-    pub border_style: Option<Style>,
+    pub title: Option<&'static str>,
+    pub padding: Option<Padding>,
+    pub block_style: Option<BlockStyle>,
 }
 
 impl Menu {
@@ -237,15 +246,12 @@ impl Menu {
 
         let cur = self.current_index();
 
+        let mut block = build_styled_widget!(Block, self.block_style);
+
+        set_if!(block, self, title);
+
         if cur.is_none() {
-            frame.render_widget(
-                List::new([]).block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_style(self.border_style.unwrap_or_default()),
-                ),
-                area,
-            );
+            frame.render_widget(List::new([]).block(block), area);
             return;
         }
 
@@ -269,11 +275,7 @@ impl Menu {
             .collect::<Vec<_>>();
 
         let list = widgets::List::new(items)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(self.border_style.unwrap_or_default()),
-            )
+            .block(block)
             .highlight_symbol("> ")
             .highlight_style(Style::default());
 
