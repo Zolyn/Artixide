@@ -17,7 +17,7 @@ use ratatui::{
 };
 
 use crate::{
-    build_styled_widget, set_if,
+    set_if,
     tui::{TuiCommand, FUZZY_MATCHER},
 };
 
@@ -35,7 +35,8 @@ pub struct Menu {
     matched_items_count: Option<usize>,
     pub title: Option<&'static str>,
     pub padding: Option<Padding>,
-    pub block_style: Option<BlockStyle>,
+    #[setters(skip)]
+    pub block_style: BlockStyle,
 }
 
 impl Menu {
@@ -246,9 +247,13 @@ impl Menu {
 
         let cur = self.current_index();
 
-        let mut block = build_styled_widget!(Block, self.block_style);
+        let mut block = self.block_style.build(Block::default());
 
         set_if!(block, self, title);
+
+        if let Some(pad) = &self.padding {
+            block = block.padding(pad.clone())
+        }
 
         if cur.is_none() {
             frame.render_widget(List::new([]).block(block), area);

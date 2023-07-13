@@ -1,8 +1,8 @@
 #[derive(Debug)]
 pub struct LocaleConfig {
-    lang: String,
-    encoding: String,
-    modifier: String,
+    pub lang: String,
+    pub encoding: String,
+    pub modifier: String,
 }
 
 impl Default for LocaleConfig {

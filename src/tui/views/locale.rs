@@ -5,10 +5,14 @@ use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
     style::{Color, Style},
+    widgets::Padding,
 };
 use regex::Regex;
 
-use crate::tui::{widgets::menu::MenuView, TuiBackend, TuiCommand};
+use crate::{
+    config::locale::LocaleConfig,
+    tui::{widgets::menu::MenuView, TuiBackend, TuiCommand},
+};
 
 use super::{horizontal_layout, vertical_layout, View};
 
@@ -31,7 +35,12 @@ fn get_locales() -> Result<(Vec<String>, Vec<String>)> {
 
             encoding_set.insert(caps.name("encoding").unwrap().as_str());
 
-            Ok(caps.name("locale").unwrap().as_str().to_owned())
+            Ok(caps
+                .name("locale")
+                .unwrap()
+                .as_str()
+                .trim_start_matches('#')
+                .to_owned())
         })
         .collect::<Result<Vec<_>>>()?;
 
@@ -57,6 +66,7 @@ pub struct Locale {
     h_layout: Layout,
     need_update: bool,
     tab: LocaleTab,
+    config: LocaleConfig,
 }
 
 impl Locale {
@@ -67,16 +77,25 @@ impl Locale {
             Constraint::Length(1),
         ]);
 
-        let h_layout = horizontal_layout([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)]);
+        let h_layout = horizontal_layout([
+            Constraint::Percentage(49),
+            Constraint::Percentage(2),
+            Constraint::Percentage(49),
+        ]);
 
-        let menus = [MenuView::new([]), MenuView::new([])];
+        let mut lang = MenuView::new([]);
+        lang.title("Lang").padding(Padding::vertical(1));
+
+        let mut encoding = MenuView::new([]);
+        encoding.title("Encoding").padding(Padding::vertical(1));
 
         Self {
-            menus,
+            menus: [lang, encoding],
             v_layout,
             h_layout,
             need_update: true,
             tab: LocaleTab::Lang,
+            config: LocaleConfig::default(),
         }
     }
 
@@ -105,6 +124,43 @@ impl View<TuiBackend> for Locale {
                 None
             }
             KeyCode::Char('q') if !menu.search_mode() => Some(TuiCommand::BackToMain),
+            KeyCode::Enter => {
+                let menu = self.get_menu_mut();
+                let item = menu.current_item()?;
+                menu.disable_search();
+
+                match self.tab {
+                    LocaleTab::Lang => {
+                        let lang = if item.contains('@') {
+                            let split = item.split('@').collect::<Vec<_>>();
+                            assert_eq!(split.len(), 2, "Split length of item mismatch");
+
+                            self.config.modifier = split[1].to_owned();
+                            split[0]
+                        } else {
+                            item.as_str()
+                        };
+
+                        let lang = if lang.contains('.') {
+                            let split = lang.split('.').collect::<Vec<_>>();
+                            assert_eq!(split.len(), 2, "Split length of lang mismatch");
+
+                            split[0]
+                        } else {
+                            lang
+                        };
+
+                        self.config.lang = lang.to_owned();
+
+                        self.tab = LocaleTab::Encoding;
+                        None
+                    }
+                    LocaleTab::Encoding => {
+                        self.config.encoding = item.to_string();
+                        Some(TuiCommand::BackToMain)
+                    }
+                }
+            }
             _ => menu.on_event(event),
         }
     }
@@ -117,11 +173,11 @@ impl View<TuiBackend> for Locale {
 
             let menu = &mut self.menus[LocaleTab::Lang as usize];
 
-            menu.title("Lang").replace_items_with(langs);
+            menu.replace_items_with(langs);
 
             let menu = &mut self.menus[LocaleTab::Encoding as usize];
 
-            menu.title("Encoding").replace_items_with(encodings);
+            menu.replace_items_with(encodings);
 
             self.need_update = false;
         }
@@ -129,23 +185,23 @@ impl View<TuiBackend> for Locale {
         let h_chunks = self.h_layout.split(v_chunks[1]);
 
         let [lang, enc] = &mut self.menus;
-        let _focus_style = Style::default().fg(Color::LightBlue);
+        let focus_style = Style::default().fg(Color::LightBlue);
 
-        // match self.tab {
-        //     LocaleTab::Lang => {
-        //         lang.border_style(focus_style);
+        match self.tab {
+            LocaleTab::Lang => {
+                lang.block_style.border_style(focus_style);
 
-        //         enc.border_style.take();
-        //     }
-        //     LocaleTab::Encoding => {
-        //         enc.border_style(focus_style);
+                enc.block_style.border_style.take();
+            }
+            LocaleTab::Encoding => {
+                enc.block_style.border_style(focus_style);
 
-        //         lang.border_style.take();
-        //     }
-        // }
+                lang.block_style.border_style.take();
+            }
+        }
 
         lang.render(frame, h_chunks[0]);
-        enc.render(frame, h_chunks[1]);
+        enc.render(frame, h_chunks[2]);
 
         self.menus[self.tab as usize].render_searchbar(frame, v_chunks[2]);
 
