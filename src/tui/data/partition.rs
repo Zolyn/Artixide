@@ -4,12 +4,13 @@ use color_eyre::Result;
 use derive_getters::Getters;
 
 use derive_setters::Setters;
-use enum_variants_strings::EnumVariantsStrings;
+use humansize::{make_format, BINARY};
 use indexmap::IndexMap;
 use itoap::Integer;
 use log::debug;
 
 use serde::Deserialize;
+use strum::{AsRefStr, EnumString};
 use typed_builder::TypedBuilder;
 
 use crate::command::CommandExt;
@@ -20,10 +21,6 @@ const ESP_GUID: &str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
 const BOOT_FLAG: &str = "0x80";
 const EXTENDED_TYPE: &str = "0x5";
 
-/// IEC standard
-const BINARY: bool = true;
-/// SI standard
-const DECIMAL: bool = false;
 const DEFAULT_ALIGN: u64 = 2048;
 
 #[derive(Debug)]
@@ -119,8 +116,8 @@ pub enum PartitionType {
     Logical,
 }
 
-#[derive(Debug, Clone, Copy, EnumVariantsStrings, Default)]
-#[enum_variants_strings_transform(transform = "lower_case")]
+#[derive(Debug, Clone, Copy, AsRefStr, EnumString, Default)]
+#[strum(serialize_all = "lowercase")]
 pub enum FileSystem {
     Ext2,
     Ext3,
@@ -194,6 +191,20 @@ pub struct BlockDevice<'a> {
     children: Option<Vec<ChildBlockDevice<'a>>>,
 }
 
+#[derive(Debug, EnumString)]
+#[strum(ascii_case_insensitive)]
+enum Unit {
+    B,
+    KB,
+    KiB,
+    MB,
+    MiB,
+    GB,
+    GiB,
+    TB,
+    TiB,
+}
+
 pub fn get_devices() -> Result<Vec<Device>> {
     let output = Command::new("lsblk")
         .args([
@@ -223,7 +234,8 @@ pub fn get_devices() -> Result<Vec<Device>> {
 }
 
 fn format_size(size: u64) -> String {
-    bytesize::to_string(size, BINARY)
+    let format_fn = make_format(BINARY);
+    format_fn(size)
 }
 
 fn itoa<V: Integer>(n: V) -> String {

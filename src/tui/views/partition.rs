@@ -1,6 +1,5 @@
 use color_eyre::eyre::bail;
 use crossterm::event::{KeyCode, KeyEvent};
-use enum_variants_strings::EnumVariantsStrings;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
@@ -107,7 +106,7 @@ impl PartitionView {
             Cell::from(part.start_string().as_str()),
             Cell::from(part.end_string().as_str()),
             Cell::from(part.sectors_string().as_str()),
-            Cell::from(part.filesystem().to_str()),
+            Cell::from(part.filesystem().as_ref()),
             Cell::from(label),
             Cell::from(mountpoint),
             Cell::from(part.size_string().as_str()),
