@@ -42,3 +42,13 @@ impl StrExt for str {
         Some(&self[start_index..end_index])
     }
 }
+
+pub trait StringExt: Sealed {
+    fn take(&mut self) -> String;
+}
+
+impl StringExt for String {
+    fn take(&mut self) -> String {
+        std::mem::take(self)
+    }
+}

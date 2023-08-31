@@ -86,30 +86,30 @@ impl PartitionView {
     }
 
     fn make_partition_row<'a>(parent: &'a str, part: &'a MemPartition) -> Row<'a> {
-        let esp = if *part.bootable() { "*" } else { "" };
-        let label = match part.label() {
-            Some(l) => l.as_str(),
+        let esp = if part.bootable { "*" } else { "" };
+        let label = match part.label {
+            Some(ref l) => l.as_str(),
             None => "",
         };
 
-        let mountpoint = match part.mountpoint() {
-            Some(m) => m.as_str(),
+        let mountpoint = match part.mountpoint {
+            Some(ref m) => m.as_str(),
             None => "",
         };
 
         Row::new([
             Cell::from(Line::from(vec![
                 Span::from(parent),
-                Span::from(part.number_string().as_str()),
+                Span::from(part.number_string.as_str()),
             ])),
             Cell::from(esp),
-            Cell::from(part.start_string().as_str()),
-            Cell::from(part.end_string().as_str()),
-            Cell::from(part.sectors_string().as_str()),
-            Cell::from(part.filesystem().as_ref()),
+            Cell::from(part.start_string.as_str()),
+            Cell::from(part.end_string.as_str()),
+            Cell::from(part.sectors_string.as_str()),
+            Cell::from(part.filesystem.as_ref()),
             Cell::from(label),
             Cell::from(mountpoint),
-            Cell::from(part.size_string().as_str()),
+            Cell::from(part.size_string.as_str()),
         ])
     }
 
@@ -117,13 +117,13 @@ impl PartitionView {
         Row::new([
             "Free space",
             "",
-            space.start_string().as_str(),
-            space.end_string().as_str(),
-            space.sectors_string().as_str(),
+            space.start_string.as_str(),
+            space.end_string.as_str(),
+            space.sectors_string.as_str(),
             "",
             "",
             "",
-            space.size_string().as_str(),
+            space.size_string.as_str(),
         ])
         .style(Style::default().fg(Color::Green))
     }

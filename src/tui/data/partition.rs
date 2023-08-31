@@ -2,9 +2,6 @@ use std::process::Command;
 
 use color_eyre::Result;
 use derive_getters::Getters;
-
-use derive_setters::Setters;
-use humansize::{make_format, BINARY};
 use indexmap::IndexMap;
 use itoap::Integer;
 use log::debug;
@@ -30,42 +27,32 @@ pub enum PartitionModification {
 }
 
 // TODO: Better getter/setter impl
-#[derive(Debug, Getters, Setters, TypedBuilder)]
-#[setters(prefix = "set_", borrow_self, generate = false)]
+#[derive(Debug, TypedBuilder)]
 pub struct MemPartition {
-    #[getter(skip)]
-    number: u16,
-    #[getter(skip)]
-    start: u64,
-    #[getter(skip)]
-    end: u64,
-    #[getter(skip)]
-    sectors: u64,
-    #[getter(skip)]
-    size: u64,
-    #[builder(default = itoa(self.fields.0.0), setter(skip))]
-    number_string: String,
-    #[builder(default = itoa(self.fields.1.0), setter(skip))]
-    start_string: String,
-    #[builder(default = itoa(self.fields.2.0), setter(skip))]
-    end_string: String,
-    #[builder(default = itoa(self.fields.3.0), setter(skip))]
-    sectors_string: String,
-    size_string: String,
-    #[setters(generate)]
+    pub number: u16,
+    pub start: u64,
+    pub end: u64,
+    pub sectors: u64,
+    pub size: u64,
+    #[builder(default = itoa(self.fields.0.0))]
+    pub number_string: String,
+    #[builder(default = itoa(self.fields.1.0))]
+    pub start_string: String,
+    #[builder(default = itoa(self.fields.2.0))]
+    pub end_string: String,
+    #[builder(default = itoa(self.fields.3.0))]
+    pub sectors_string: String,
+    #[builder(default = format_size(self.fields.4.0))]
+    pub size_string: String,
     #[builder(default, setter(skip))]
-    bootable: bool,
-    #[setters(generate)]
+    pub bootable: bool,
     #[builder(default, setter(skip))]
-    filesystem: FileSystem,
-    #[setters(generate)]
+    pub filesystem: FileSystem,
     #[builder(default, setter(skip))]
-    label: Option<String>,
-    #[setters(generate)]
+    pub label: Option<String>,
     #[builder(default, setter(skip))]
-    mountpoint: Option<String>,
+    pub mountpoint: Option<String>,
     #[builder(default, setter(skip))]
-    #[getter(skip)]
     /// Indicate whether the partition is real or in-memory
     /// Only used for validation purpose (in the future)
     uuid: Option<String>,
@@ -79,20 +66,20 @@ pub struct RawSpace {
     size: u64,
 }
 
-#[derive(Debug, Getters, TypedBuilder)]
+#[derive(Debug, TypedBuilder)]
 pub struct DiskSpace {
-    #[getter(skip)]
-    start: u64,
-    #[getter(skip)]
-    end: u64,
-    #[getter(skip)]
-    sectors: u64,
-    #[getter(skip)]
-    size: u64,
-    start_string: String,
-    end_string: String,
-    sectors_string: String,
-    size_string: String,
+    pub start: u64,
+    pub end: u64,
+    pub sectors: u64,
+    pub size: u64,
+    #[builder(default = itoa(self.fields.0.0))]
+    pub start_string: String,
+    #[builder(default = itoa(self.fields.1.0))]
+    pub end_string: String,
+    #[builder(default = itoa(self.fields.2.0))]
+    pub sectors_string: String,
+    #[builder(default = format_size(self.fields.3.0))]
+    pub size_string: String,
 }
 
 #[derive(Debug)]
@@ -247,8 +234,9 @@ pub fn get_devices() -> Result<Vec<Device>> {
 }
 
 fn format_size(size: u64) -> String {
-    let format_fn = make_format(BINARY);
-    format_fn(size)
+    const BINARY: bool = true;
+
+    bytesize::to_string(size, BINARY)
 }
 
 fn itoa<V: Integer>(n: V) -> String {

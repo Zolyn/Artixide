@@ -1,4 +1,4 @@
-use std::{fmt::Debug, fs, iter::once, str::FromStr};
+use std::{fmt::Debug, fs, iter::once, mem, str::FromStr};
 
 use color_eyre::{eyre::ContextCompat, Result};
 use gptman::GPT;
@@ -175,6 +175,8 @@ impl Device {
             modifications,
         };
 
+        dev.mem_table.reserve(5);
+
         dev.fill_free_space();
 
         Ok(Some(Device::Compatible(dev)))
@@ -343,26 +345,6 @@ impl Debug for NumberPool {
 }
 
 impl DiskSpace {
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    pub fn end(&self) -> u64 {
-        self.end
-    }
-
-    pub fn sectors(&self) -> u64 {
-        self.sectors
-    }
-
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
-    pub fn size_string_mut(&mut self) -> &mut String {
-        &mut self.size_string
-    }
-
     pub fn expand_right(&mut self, val: RawSpace) {
         assert!(val.start == self.end + 1, "Not a sibling space");
 

@@ -12,7 +12,7 @@ use crate::{
         widgets::{
             input::{Input, InputCommand},
             menu::{MenuArgs, SearchableMenu},
-            Widget,
+            BlockExt, Widget,
         },
         Msg, Operation, TuiBackend,
     },
@@ -151,7 +151,7 @@ impl View for MainView {
             InputType::Hostname => "Hostname",
         };
 
-        let block = Block::default().title(title).borders(Borders::ALL);
+        let block = Block::with_borders().title(title);
 
         let area = Rect {
             y: menu_area.y + offset as u16,

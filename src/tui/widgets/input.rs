@@ -51,6 +51,10 @@ impl Input {
         std::mem::take(&mut self.input)
     }
 
+    pub fn as_str(&self) -> &str {
+        &self.input
+    }
+
     pub fn clear(&mut self) {
         self.input.clear()
     }
