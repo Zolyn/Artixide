@@ -128,14 +128,14 @@ impl DiskEditor {
             (false, false) => {
                 let_irrefutable!(&mut dev.mem_table[selected], MemTableEntry::Partition(part));
 
-                let start = part.start();
-                let end = part.end();
-                let sectors = part.sectors();
-                let size = part.size();
-                let start_string = std::mem::take(part.start_string_mut());
-                let end_string = std::mem::take(part.end_string_mut());
-                let sectors_string = std::mem::take(part.sectors_string_mut());
-                let size_string = std::mem::take(part.size_string_mut());
+                let start = part.start;
+                let end = part.end;
+                let sectors = part.sectors;
+                let size = part.size;
+                let start_string = part.start_string.take();
+                let end_string = part.end_string.take();
+                let sectors_string = part.sectors_string.take();
+                let size_string = part.size_string.take();
 
                 let space = DiskSpace::builder()
                     .start(start)
@@ -266,6 +266,7 @@ impl DiskEditor {
 
         dev.mem_table[selected] = MemTableEntry::Partition(part);
 
+        self.input.clear();
         self.focus = Focus::Menu;
         None
     }

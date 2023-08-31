@@ -47,42 +47,6 @@ impl MemPartition {
         })
     }
 
-    pub fn number(&self) -> u16 {
-        self.number
-    }
-
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    pub fn end(&self) -> u64 {
-        self.end
-    }
-
-    pub fn sectors(&self) -> u64 {
-        self.sectors
-    }
-
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
-    pub fn start_string_mut(&mut self) -> &mut String {
-        &mut self.start_string
-    }
-
-    pub fn end_string_mut(&mut self) -> &mut String {
-        &mut self.end_string
-    }
-
-    pub fn size_string_mut(&mut self) -> &mut String {
-        &mut self.size_string
-    }
-
-    pub fn sectors_string_mut(&mut self) -> &mut String {
-        &mut self.sectors_string
-    }
-
     pub fn as_raw_space(&self) -> RawSpace {
         RawSpace {
             start: self.start,
