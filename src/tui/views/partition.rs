@@ -11,7 +11,7 @@ use ratatui::{
 use self::editor::DiskEditor;
 use crate::{
     config::Config,
-    fetch_data_if_needed, lazy, match_irrefutable,
+    fetch_data_if_needed, lazy, let_irrefutable,
     tui::{
         data::partition::{get_devices, Device, DiskSpace, MemPartition, MemTableEntry},
         widgets::{
@@ -230,7 +230,7 @@ impl View for PartitionView {
         self.render_table(frame, chunks[1]);
 
         let entry_info = self.table.current_index().map(|i| {
-            match_irrefutable!(&self.devices[self.current_device], Device::Compatible(dev));
+            let_irrefutable!(&self.devices[self.current_device], Device::Compatible(dev));
             (dev.mem_table.as_slice(), i)
         });
 

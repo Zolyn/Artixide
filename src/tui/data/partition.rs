@@ -41,6 +41,8 @@ pub struct MemPartition {
     end: u64,
     #[getter(skip)]
     sectors: u64,
+    #[getter(skip)]
+    size: u64,
     #[builder(default = itoa(self.fields.0.0), setter(skip))]
     number_string: String,
     #[builder(default = itoa(self.fields.1.0), setter(skip))]
@@ -69,12 +71,24 @@ pub struct MemPartition {
     uuid: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct RawSpace {
+    start: u64,
+    end: u64,
+    sectors: u64,
+    size: u64,
+}
+
 #[derive(Debug, Getters, TypedBuilder)]
 pub struct DiskSpace {
     #[getter(skip)]
     start: u64,
     #[getter(skip)]
     end: u64,
+    #[getter(skip)]
+    sectors: u64,
+    #[getter(skip)]
+    size: u64,
     start_string: String,
     end_string: String,
     sectors_string: String,
@@ -104,7 +118,7 @@ pub enum Device {
     /// Device with known table
     Compatible(CompatDevice),
     /// Device with unrecognized table
-    Incompatible(ThinDisk),
+    Incompatible(RawDisk),
 }
 
 #[derive(Debug)]
@@ -147,7 +161,7 @@ pub struct Disk {
 }
 
 #[derive(Debug, Getters)]
-pub struct ThinDisk {
+pub struct RawDisk {
     model: String,
     path: String,
     size: u64,
@@ -192,7 +206,6 @@ pub struct BlockDevice<'a> {
 }
 
 #[derive(Debug, EnumString)]
-#[strum(ascii_case_insensitive)]
 enum Unit {
     B,
     KB,

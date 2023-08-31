@@ -6,8 +6,8 @@ use indexmap::IndexMap;
 
 use super::{
     format_size, itoa, BlockDevice, ChildBlockDevice, CompatDevice, Device, Disk, DiskSpace,
-    FileSystem, MemPartition, MemTableEntry, NumberPool, ThinDisk, Unit, BOOT_FLAG, DEFAULT_ALIGN,
-    ESP_GUID,
+    FileSystem, MemPartition, MemTableEntry, NumberPool, RawDisk, RawSpace, Unit, BOOT_FLAG,
+    DEFAULT_ALIGN, ESP_GUID,
 };
 
 impl MemPartition {
@@ -42,6 +42,7 @@ impl MemPartition {
             start,
             end,
             sectors,
+            size,
             bootable,
         })
     }
@@ -62,6 +63,10 @@ impl MemPartition {
         self.sectors
     }
 
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
     pub fn start_string_mut(&mut self) -> &mut String {
         &mut self.start_string
     }
@@ -76,6 +81,15 @@ impl MemPartition {
 
     pub fn sectors_string_mut(&mut self) -> &mut String {
         &mut self.sectors_string
+    }
+
+    pub fn as_raw_space(&self) -> RawSpace {
+        RawSpace {
+            start: self.start,
+            end: self.end,
+            sectors: self.sectors,
+            size: self.size,
+        }
     }
 }
 
@@ -94,7 +108,7 @@ impl Device {
         let table = dev.pttype.filter(|table| matches!(*table, "gpt" | "dos"));
 
         if table.is_none() {
-            return Ok(Some(Device::Incompatible(ThinDisk {
+            return Ok(Some(Device::Incompatible(RawDisk {
                 model,
                 path,
                 size,
@@ -161,7 +175,7 @@ impl Device {
             modifications,
         };
 
-        dev.update_free_space();
+        dev.fill_free_space();
 
         Ok(Some(Device::Compatible(dev)))
     }
@@ -220,7 +234,7 @@ impl CompatDevice {
     ///
     /// https://docs.rs/mbrman/0.5.2/src/mbrman/lib.rs.html#692-733
     // TODO: MBR
-    pub fn update_free_space(&mut self) {
+    pub fn fill_free_space(&mut self) {
         let disk = &self.disk;
         let entries = &mut self.mem_table;
         let len = entries.len();
@@ -267,6 +281,8 @@ impl CompatDevice {
             let space = DiskSpace {
                 start,
                 end,
+                sectors,
+                size,
                 start_string: itoa(start),
                 end_string: itoa(end),
                 sectors_string: itoa(sectors),
@@ -335,8 +351,47 @@ impl DiskSpace {
         self.end
     }
 
+    pub fn sectors(&self) -> u64 {
+        self.sectors
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
     pub fn size_string_mut(&mut self) -> &mut String {
         &mut self.size_string
+    }
+
+    pub fn expand_right(&mut self, val: RawSpace) {
+        assert!(val.start == self.end + 1, "Not a sibling space");
+
+        self.end = val.end;
+        self.sectors += val.sectors;
+        self.size += val.size;
+        self.end_string = itoa(self.end);
+        self.sectors_string = itoa(self.sectors);
+        self.size_string = format_size(self.size)
+    }
+
+    pub fn expand_left(&mut self, val: RawSpace) {
+        assert!(val.end == self.start - 1, "Not a sibling space");
+
+        self.start = val.start;
+        self.sectors += val.sectors;
+        self.size += val.size;
+        self.start_string = itoa(self.start);
+        self.sectors_string = itoa(self.sectors);
+        self.size_string = format_size(self.size)
+    }
+
+    pub fn as_raw_space(&self) -> RawSpace {
+        RawSpace {
+            start: self.start,
+            end: self.end,
+            sectors: self.sectors,
+            size: self.size,
+        }
     }
 }
 

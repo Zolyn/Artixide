@@ -81,8 +81,18 @@ macro_rules! wrap_view {
 }
 
 #[macro_export]
-macro_rules! match_irrefutable {
+macro_rules! let_irrefutable {
     ($v:expr, $p:pat) => {
         let $p = $v else { unreachable!() };
     };
+}
+
+#[macro_export]
+macro_rules! match_irrefutable {
+    ($v:expr, $p:pat, $ret:expr) => {{
+        match $v {
+            $p => $ret,
+            _ => unreachable!(),
+        }
+    }};
 }
