@@ -87,6 +87,7 @@ impl DiskEditor {
                 }
                 "Delete partition" => {
                     let selected = self.last_selected.unwrap();
+
                     let_irrefutable!(dev, Device::Compatible(dev));
 
                     let is_prev_free = selected.checked_sub(1).is_some()
@@ -141,7 +142,7 @@ impl DiskEditor {
                                 MemTableEntry::Partition(part)
                             );
                             let_irrefutable!(
-                                &mut dev.mem_table[selected + 1],
+                                &mut dev.mem_table[selected],
                                 MemTableEntry::Free(base)
                             );
 
