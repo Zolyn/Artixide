@@ -21,14 +21,14 @@ use super::{horizontal_layout, vertical_layout, View};
 wrap_view!(LocaleView, Locale);
 
 #[derive(Debug, Default, Clone, Copy)]
-enum LocaleTab {
+enum Focus {
     #[default]
     Lang,
     Encoding,
 }
 
-impl LocaleTab {
-    fn invert(&mut self) {
+impl Focus {
+    fn switch(&mut self) {
         if let Self::Lang = self {
             *self = Self::Encoding
         } else {
@@ -42,12 +42,12 @@ struct LocaleView {
     menus: [CachedSearchableMenu<String>; 2],
     v_layout: Layout,
     h_layout: Layout,
-    tab: LocaleTab,
+    focus: Focus,
 }
 
 macro_rules! get_menu_mut {
     ($self:ident) => {
-        &mut $self.menus[$self.tab as usize]
+        &mut $self.menus[$self.focus as usize]
     };
 }
 
@@ -76,8 +76,8 @@ impl LocaleView {
         let menu = get_menu_mut!(self);
         let item = menu.current_item()?;
 
-        let result = match self.tab {
-            LocaleTab::Lang => {
+        let result = match self.focus {
+            Focus::Lang => {
                 let lang = if item.contains('@') {
                     let split = item.split('@').collect::<Vec<_>>();
                     assert_eq!(split.len(), 2, "Split length of item mismatch");
@@ -99,11 +99,12 @@ impl LocaleView {
 
                 locale.lang = lang.to_owned();
 
-                self.tab = LocaleTab::Encoding;
+                self.focus = Focus::Encoding;
                 None
             }
-            LocaleTab::Encoding => {
+            Focus::Encoding => {
                 locale.encoding = item.to_string();
+                self.focus = Focus::Lang;
                 Some(Msg::BackToMain)
             }
         };
@@ -123,7 +124,7 @@ impl View for LocaleView {
 
         match event.code {
             KeyCode::Tab => {
-                self.tab.invert();
+                self.focus.switch();
                 None
             }
             KeyCode::Esc => {
@@ -133,6 +134,10 @@ impl View for LocaleView {
                 }
 
                 Some(Msg::BackToMain)
+            }
+            KeyCode::Char('h') | KeyCode::Char('l') if !menu.search_enabled() => {
+                self.focus.switch();
+                None
             }
             KeyCode::Char('q') if !menu.search_enabled() => Some(Msg::BackToMain),
             KeyCode::Enter => self.handle_select(&mut config.locale),
@@ -144,10 +149,10 @@ impl View for LocaleView {
         fetch_data_if_needed!({
             let (langs, encodings) = get_locales()?;
 
-            let menu = &mut self.menus[LocaleTab::Lang as usize];
+            let menu = &mut self.menus[Focus::Lang as usize];
             menu.replace_items(langs);
 
-            let menu = &mut self.menus[LocaleTab::Encoding as usize];
+            let menu = &mut self.menus[Focus::Encoding as usize];
             menu.replace_items(encodings);
         });
 
@@ -158,11 +163,11 @@ impl View for LocaleView {
         let [lang, enc] = &mut self.menus;
 
         let items = [
-            (lang, LocaleTab::Lang as usize, h_chunks[0]),
-            (enc, LocaleTab::Encoding as usize, h_chunks[2]),
+            (lang, Focus::Lang as usize, h_chunks[0]),
+            (enc, Focus::Encoding as usize, h_chunks[2]),
         ];
 
-        let cur = self.tab as usize;
+        let cur = self.focus as usize;
 
         for (menu, tab, area) in items {
             let args_builder = MenuArgs::builder().frame(frame).area(area);
@@ -174,7 +179,7 @@ impl View for LocaleView {
             }
         }
 
-        self.menus[self.tab as usize].render_searchbar_default(frame, v_chunks[2]);
+        self.menus[self.focus as usize].render_searchbar_default(frame, v_chunks[2]);
 
         Ok(())
     }

@@ -3,11 +3,12 @@ use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Paragraph},
+    widgets::{Block, Clear, Paragraph},
 };
 
 use crate::{
     config::Config,
+    string::StringExt,
     tui::{
         widgets::{
             input::{Input, InputCommand},

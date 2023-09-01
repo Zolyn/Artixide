@@ -1,10 +1,14 @@
-use std::str::FromStr;
+use std::{ops::ControlFlow, str::FromStr};
 
 use bytesize::ByteSize;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::Rect,
-    widgets::{Block, Clear},
+    style::{Color, Style},
+    widgets::{
+        block::{Position, Title},
+        Block, Clear,
+    },
     Frame,
 };
 
@@ -12,7 +16,7 @@ use crate::{
     let_irrefutable,
     string::StringExt,
     tui::{
-        data::partition::{Device, DiskSpace, MemPartition, MemTableEntry},
+        data::partition::{Device, DiskSpace, MemPartition, MemTableEntry, DEFAULT_ALIGN},
         widgets::{
             input::{Input, InputCommand},
             menu::{Menu, MenuArgs},
@@ -25,6 +29,8 @@ use crate::{
 use super::Focus as ParentFocus;
 
 const ERR_PARSE_SIZE: &str = "Failed to parse size";
+const ERR_INVALID_SIZE: &str = "Invalid size";
+const ERR_OVER_SIZE: &str = "No enough size";
 
 #[derive(Debug)]
 enum Focus {
@@ -39,6 +45,7 @@ pub struct DiskEditor {
     input: Input,
     last_selected: Option<usize>,
     focus: Focus,
+    create_error: Option<&'static str>,
 }
 
 impl DiskEditor {
@@ -164,7 +171,10 @@ impl DiskEditor {
         match event.code {
             KeyCode::Tab => *focus = ParentFocus::Table,
             KeyCode::Enter => match self.current_item()? {
-                "Create partition" => self.focus = Focus::Create,
+                "Create partition" => {
+                    self.focus = Focus::Create;
+                    self.input.push('*')
+                }
                 "Delete partition" => self.handle_delete(dev),
                 _ => unreachable!(),
             },
@@ -175,6 +185,7 @@ impl DiskEditor {
     }
 
     fn handle_create(&mut self, event: KeyEvent, dev: &mut Device) -> Option<Msg> {
+        self.create_error = None;
         let command = self.input.on_event(event)?;
 
         if matches!(command, InputCommand::Cancel) {
@@ -191,19 +202,66 @@ impl DiskEditor {
         let sector_size = *dev.disk.sector_size();
 
         let input = self.input.as_str().trim();
+
+        if input == "*" {
+            let number = dev.number_pool.find_available_num()?;
+            let start = space.start;
+            let end = space.end;
+            let size = space.size;
+            let sectors = space.sectors;
+            let start_string = space.start_string.take();
+            let end_string = space.end_string.take();
+            let size_string = space.size_string.take();
+            let sectors_string = space.sectors_string.take();
+
+            let part = MemPartition::builder()
+                .number(number)
+                .start(start)
+                .end(end)
+                .size(size)
+                .sectors(sectors)
+                .start_string(start_string)
+                .end_string(end_string)
+                .sectors_string(sectors_string)
+                .size_string(size_string)
+                .build();
+
+            dev.mem_table[selected] = MemTableEntry::Partition(part);
+
+            self.input.clear();
+            self.focus = Focus::Menu;
+            return None;
+        }
+
         let (last_char_index, c) = input.char_indices().last().unwrap();
 
         let sectors = if c.eq_ignore_ascii_case(&'S') {
-            input[..last_char_index].trim().parse::<u64>().unwrap()
+            let Ok(s) = input[..last_char_index].trim().parse::<u64>() else {
+                self.create_error = Some(ERR_PARSE_SIZE);
+                return None
+            };
+
+            s
         } else {
-            let Ok(ByteSize(size)) = ByteSize::from_str(input) else { todo!() };
+            let Ok(ByteSize(size)) = ByteSize::from_str(input) else {
+                self.create_error = Some(ERR_PARSE_SIZE);
+                return None
+             };
+
             size / sector_size as u64
         };
 
         let free_sectors = space.sectors;
 
-        // TODO: Alignment
-        assert!(sectors > 0 && sectors <= free_sectors);
+        if sectors == 0 {
+            self.create_error = Some(ERR_INVALID_SIZE);
+            return None;
+        }
+
+        if sectors > free_sectors {
+            self.create_error = Some(ERR_OVER_SIZE);
+            return None;
+        }
 
         let remaining = free_sectors - sectors;
         let has_remaining = remaining > 0;
@@ -249,19 +307,26 @@ impl DiskEditor {
             let start = end + 1;
             let end = space.end;
             let sectors = remaining;
-            let size = remaining * sector_size as u64;
-            let end_string = space.end_string.take();
 
-            let space = DiskSpace::builder()
-                .start(start)
-                .end(end)
-                .sectors(sectors)
-                .size(size)
-                .end_string(end_string)
-                .build();
+            let padding = ((start - 1) / DEFAULT_ALIGN + 1) * DEFAULT_ALIGN - start;
+            let sectors = sectors.saturating_sub(padding);
 
-            dev.mem_table
-                .insert(selected + 1, MemTableEntry::Free(space))
+            if sectors > 0 {
+                let start = start + padding;
+                let size = sectors * sector_size as u64;
+                let end_string = space.end_string.take();
+
+                let space = DiskSpace::builder()
+                    .start(start)
+                    .end(end)
+                    .sectors(sectors)
+                    .size(size)
+                    .end_string(end_string)
+                    .build();
+
+                dev.mem_table
+                    .insert(selected + 1, MemTableEntry::Free(space))
+            }
         }
 
         dev.mem_table[selected] = MemTableEntry::Partition(part);
@@ -284,7 +349,14 @@ impl DiskEditor {
     }
 
     fn render_create_menu(&mut self, frame: &mut Frame<TuiBackend>, area: Rect) {
-        let block = Block::with_borders().title("Partition size (S for sectors)");
+        let mut block = Block::with_borders()
+            .title("Partition size (S for sectors, default in bytes, * for all available sectors)");
+
+        if let Some(err) = self.create_error {
+            block = block
+                .title(Title::default().content(err).position(Position::Bottom))
+                .style(Style::default().fg(Color::Red))
+        }
 
         let inner = block.inner(area);
 
@@ -310,7 +382,7 @@ impl DiskEditor {
                 x: area.x,
                 y: area.y - 3,
                 height: 3,
-                width: area.width,
+                width: area.width.min(100),
             };
 
             self.render_create_menu(frame, area)
@@ -326,6 +398,7 @@ impl Default for DiskEditor {
             input: Input::default(),
             last_selected: None,
             focus: Focus::Menu,
+            create_error: None,
         }
     }
 }

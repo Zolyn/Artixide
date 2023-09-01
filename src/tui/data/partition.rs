@@ -18,7 +18,7 @@ const ESP_GUID: &str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
 const BOOT_FLAG: &str = "0x80";
 const EXTENDED_TYPE: &str = "0x5";
 
-const DEFAULT_ALIGN: u64 = 2048;
+pub const DEFAULT_ALIGN: u64 = 2048;
 
 #[derive(Debug)]
 pub enum PartitionModification {
@@ -190,19 +190,6 @@ pub struct BlockDevice<'a> {
     pttype: Option<&'a str>,
     ptuuid: Option<&'a str>,
     children: Option<Vec<ChildBlockDevice<'a>>>,
-}
-
-#[derive(Debug, EnumString)]
-enum Unit {
-    B,
-    KB,
-    KiB,
-    MB,
-    MiB,
-    GB,
-    GiB,
-    TB,
-    TiB,
 }
 
 pub fn get_devices() -> Result<Vec<Device>> {

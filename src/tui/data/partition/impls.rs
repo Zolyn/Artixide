@@ -1,12 +1,12 @@
-use std::{fmt::Debug, fs, iter::once, mem, str::FromStr};
+use std::{fmt::Debug, fs, iter::once, str::FromStr};
 
-use color_eyre::{eyre::ContextCompat, Result};
+use color_eyre::Result;
 use gptman::GPT;
 use indexmap::IndexMap;
 
 use super::{
     format_size, itoa, BlockDevice, ChildBlockDevice, CompatDevice, Device, Disk, DiskSpace,
-    FileSystem, MemPartition, MemTableEntry, NumberPool, RawDisk, RawSpace, Unit, BOOT_FLAG,
+    FileSystem, MemPartition, MemTableEntry, NumberPool, RawDisk, RawSpace, BOOT_FLAG,
     DEFAULT_ALIGN, ESP_GUID,
 };
 
@@ -156,43 +156,6 @@ impl MemTableEntry {
     }
 }
 
-impl Disk {
-    pub fn parse_sectors_from(&self, val: &str) -> Result<u64> {
-        if let Ok(v) = val.parse::<u64>() {
-            return Ok(v);
-        }
-
-        let number = {
-            let offset = val
-                .char_indices()
-                .take_while(|(_, c)| c.is_ascii_digit())
-                .last()
-                .wrap_err("No digit found")?
-                .0;
-            &val[..offset]
-        };
-
-        let n = number.parse::<u64>()?;
-
-        let suffix = {
-            let offset = val
-                .char_indices()
-                .skip_while(|(_, c)| c.is_whitespace() || c.is_ascii_digit() || *c == '.')
-                .last()
-                .wrap_err("No unit found")?
-                .0;
-
-            &val[..offset]
-        };
-
-        let unit = Unit::from_str(suffix)?;
-
-        let sectors = unit.as_bytes(n) / self.sector_size as u64;
-
-        Ok(sectors)
-    }
-}
-
 impl CompatDevice {
     /// References
     ///
@@ -232,7 +195,7 @@ impl CompatDevice {
             }
 
             let first_usable = start + 1;
-            let padding = (start / DEFAULT_ALIGN + 1) * DEFAULT_ALIGN - first_usable;
+            let padding = ((first_usable - 1) / DEFAULT_ALIGN + 1) * DEFAULT_ALIGN - first_usable;
             let sectors = sectors.saturating_sub(padding);
 
             // No sectors between aligned start and end
@@ -310,7 +273,7 @@ impl Debug for NumberPool {
 
 impl DiskSpace {
     pub fn expand_right(&mut self, val: RawSpace) {
-        assert!(val.start == self.end + 1, "Not a sibling space");
+        assert!(self.end < val.start, "Not a sibling space");
 
         self.end = val.end;
         self.sectors += val.sectors;
@@ -321,7 +284,7 @@ impl DiskSpace {
     }
 
     pub fn expand_left(&mut self, val: RawSpace) {
-        assert!(val.end == self.start - 1, "Not a sibling space");
+        assert!(val.end < self.start, "Not a sibling space");
 
         self.start = val.start;
         self.sectors += val.sectors;
@@ -338,50 +301,5 @@ impl DiskSpace {
             sectors: self.sectors,
             size: self.size,
         }
-    }
-}
-
-// Source: https://github.com/hyunsik/bytesize/blob/8dd9145911c6c82ab23169ab4bd4a5eb96174b70/src/lib.rs
-mod units {
-    /// byte size for 1 byte
-    pub const B: u64 = 1;
-    /// bytes size for 1 kilobyte
-    pub const KB: u64 = 1_000;
-    /// bytes size for 1 megabyte
-    pub const MB: u64 = 1_000_000;
-    /// bytes size for 1 gigabyte
-    pub const GB: u64 = 1_000_000_000;
-    /// bytes size for 1 terabyte
-    pub const TB: u64 = 1_000_000_000_000;
-
-    /// bytes size for 1 kibibyte
-    pub const KIB: u64 = 1_024;
-    /// bytes size for 1 mebibyte
-    pub const MIB: u64 = 1_048_576;
-    /// bytes size for 1 gibibyte
-    pub const GIB: u64 = 1_073_741_824;
-    /// bytes size for 1 tebibyte
-    pub const TIB: u64 = 1_099_511_627_776;
-}
-
-impl Unit {
-    fn base(&self) -> u64 {
-        use units::*;
-
-        match self {
-            Self::B => B,
-            Self::KB => KB,
-            Self::KiB => KIB,
-            Self::MB => MB,
-            Self::MiB => MIB,
-            Self::GB => GB,
-            Self::GiB => GIB,
-            Self::TB => TB,
-            Self::TiB => TIB,
-        }
-    }
-
-    fn as_bytes(&self, n: u64) -> u64 {
-        n * self.base()
     }
 }

@@ -43,10 +43,10 @@ const HEADER: [&str; 9] = [
     "Start",
     "End",
     "Sectors",
-    "Filesystem",
-    "Filesystem label",
+    "FS",
+    "FS label",
     "Mountpoint",
-    "Size",
+    "~Size",
 ];
 
 const TABLE_WIDTHS: &[Constraint] = &[

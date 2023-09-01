@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use derive_more::{Deref, DerefMut};
 use ratatui::{backend::Backend, layout::Rect, text::Line, widgets::Paragraph, Frame};
 use unicode_width::UnicodeWidthStr;
 
@@ -7,7 +8,7 @@ pub enum InputCommand {
     Submit,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deref, DerefMut)]
 pub struct Input {
     input: String,
 }
@@ -45,17 +46,5 @@ impl Input {
             KeyCode::Esc => Some(InputCommand::Cancel),
             _ => None,
         }
-    }
-
-    pub fn take(&mut self) -> String {
-        std::mem::take(&mut self.input)
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.input
-    }
-
-    pub fn clear(&mut self) {
-        self.input.clear()
     }
 }
