@@ -7,7 +7,7 @@ use itoap::Integer;
 use log::debug;
 
 use serde::Deserialize;
-use strum::{AsRefStr, EnumString};
+use strum::{AsRefStr, EnumCount, EnumDiscriminants, EnumString};
 use typed_builder::TypedBuilder;
 
 use crate::command::CommandExt;
@@ -20,10 +20,16 @@ const EXTENDED_TYPE: &str = "0x5";
 
 pub const DEFAULT_ALIGN: u64 = 2048;
 
-#[derive(Debug)]
-pub enum PartitionModification {
-    Create { start: u64, end: u64 },
+#[derive(Debug, EnumDiscriminants, EnumCount)]
+#[strum_discriminants(name(ModificationType))]
+pub enum Modification {
     Delete,
+    Create { start: u64, end: u64 },
+}
+
+#[derive(Debug)]
+pub struct ModificationSet {
+    inner: Vec<Option<Modification>>,
 }
 
 // TODO: Better getter/setter impl
@@ -97,7 +103,7 @@ pub struct CompatDevice {
     pub disk: Disk,
     pub mem_table: Vec<MemTableEntry>,
     pub number_pool: NumberPool,
-    pub modifications: IndexMap<u16, PartitionModification>,
+    pub modification_map: IndexMap<u16, ModificationSet>,
 }
 
 #[derive(Debug)]

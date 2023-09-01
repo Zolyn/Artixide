@@ -3,11 +3,12 @@ use std::{fmt::Debug, fs, iter::once, str::FromStr};
 use color_eyre::Result;
 use gptman::GPT;
 use indexmap::IndexMap;
+use strum::EnumCount;
 
 use super::{
     format_size, itoa, BlockDevice, ChildBlockDevice, CompatDevice, Device, Disk, DiskSpace,
-    FileSystem, MemPartition, MemTableEntry, NumberPool, RawDisk, RawSpace, BOOT_FLAG,
-    DEFAULT_ALIGN, ESP_GUID,
+    FileSystem, MemPartition, MemTableEntry, Modification, ModificationSet, ModificationType,
+    NumberPool, RawDisk, RawSpace, BOOT_FLAG, DEFAULT_ALIGN, ESP_GUID,
 };
 
 impl MemPartition {
@@ -54,6 +55,10 @@ impl MemPartition {
             sectors: self.sectors,
             size: self.size,
         }
+    }
+
+    pub fn is_real(&self) -> bool {
+        self.uuid.is_some()
     }
 }
 
@@ -124,22 +129,25 @@ impl Device {
 
                 let part = MemPartition::from_raw(c, sector_size, is_gpt)?;
 
-                number_pool.set_used(part.number as usize - 1);
+                number_pool.set_used(part.number - 1);
 
                 Some(MemTableEntry::Partition(part))
             })
             .collect::<Vec<_>>();
 
-        let modifications = IndexMap::with_capacity(mem_table.len());
+        assert!(mem_table.len() <= 256, "Maximum partition amount exceeded");
+
+        let modification_map = IndexMap::with_capacity(mem_table.len());
 
         let mut dev = CompatDevice {
             disk,
             mem_table,
             number_pool,
-            modifications,
+            modification_map,
         };
 
         dev.mem_table.reserve(5);
+        dev.modification_map.reserve(5);
 
         dev.fill_free_space();
 
@@ -248,12 +256,12 @@ impl NumberPool {
         None
     }
 
-    pub fn set_used(&mut self, index: usize) {
-        self.inner[index] = true
+    pub fn set_used(&mut self, index: u16) {
+        self.inner[index as usize] = true
     }
 
-    pub fn set_unused(&mut self, index: usize) {
-        self.inner[index] = false
+    pub fn set_unused(&mut self, index: u16) {
+        self.inner[index as usize] = false
     }
 }
 
@@ -301,5 +309,35 @@ impl DiskSpace {
             sectors: self.sectors,
             size: self.size,
         }
+    }
+}
+
+impl ModificationSet {
+    pub fn new() -> Self {
+        Self {
+            inner: (0..Modification::COUNT).map(|_| None).collect(),
+        }
+    }
+
+    pub fn contains(&self, variant: ModificationType) -> bool {
+        let index = variant as usize;
+
+        self.inner[index].is_some()
+    }
+
+    pub fn insert(&mut self, val: Modification) {
+        let index = ModificationType::from(&val) as usize;
+
+        self.inner[index] = Some(val);
+    }
+
+    pub fn clear(&mut self) {
+        self.inner.clear()
+    }
+}
+
+impl Default for ModificationSet {
+    fn default() -> Self {
+        Self::new()
     }
 }

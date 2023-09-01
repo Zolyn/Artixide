@@ -1,4 +1,4 @@
-use std::{ops::ControlFlow, str::FromStr};
+use std::str::FromStr;
 
 use bytesize::ByteSize;
 use crossterm::event::{KeyCode, KeyEvent};
@@ -16,7 +16,10 @@ use crate::{
     let_irrefutable,
     string::StringExt,
     tui::{
-        data::partition::{Device, DiskSpace, MemPartition, MemTableEntry, DEFAULT_ALIGN},
+        data::partition::{
+            Device, DiskSpace, MemPartition, MemTableEntry, Modification, ModificationType,
+            DEFAULT_ALIGN,
+        },
         widgets::{
             input::{Input, InputCommand},
             menu::{Menu, MenuArgs},
@@ -27,6 +30,13 @@ use crate::{
 };
 
 use super::Focus as ParentFocus;
+
+const PARTITION_OPERATIONS: &[&str] = &[
+    "Delete partition",
+    "Change filesystem",
+    "Change mountpoint",
+    "Change label",
+];
 
 const ERR_PARSE_SIZE: &str = "Failed to parse size";
 const ERR_INVALID_SIZE: &str = "Invalid size";
@@ -68,7 +78,7 @@ impl DiskEditor {
 
         match entry {
             MemTableEntry::Free(_) => self.items.push("Create partition"),
-            MemTableEntry::Partition(_) => self.items.push("Delete partition"),
+            MemTableEntry::Partition(_) => self.items.extend(PARTITION_OPERATIONS),
         };
 
         self.items.push("New partition table")
@@ -94,6 +104,11 @@ impl DiskEditor {
                 dev.mem_table.get(selected.saturating_add(1)),
                 Some(MemTableEntry::Free(_))
             );
+
+        let_irrefutable!(&dev.mem_table[selected], MemTableEntry::Partition(part));
+
+        let number = part.number;
+        let is_real = part.is_real();
 
         match (is_prev_free, is_next_free) {
             (true, true) => {
@@ -159,7 +174,17 @@ impl DiskEditor {
             }
         }
 
-        dev.number_pool.set_unused(selected);
+        dev.number_pool.set_unused(number);
+
+        let key = number;
+        let entry = dev.modification_map.entry(key).or_default();
+
+        if is_real || entry.contains(ModificationType::Delete) {
+            entry.clear();
+            entry.insert(Modification::Delete);
+        } else {
+            dev.modification_map.shift_remove(&key);
+        }
     }
 
     fn handle_menu(
@@ -328,6 +353,12 @@ impl DiskEditor {
                     .insert(selected + 1, MemTableEntry::Free(space))
             }
         }
+
+        let entry = dev.modification_map.entry(number).or_default();
+        entry.insert(Modification::Create {
+            start: part.start,
+            end: part.end,
+        });
 
         dev.mem_table[selected] = MemTableEntry::Partition(part);
 
