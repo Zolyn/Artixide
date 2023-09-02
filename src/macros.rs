@@ -12,3 +12,35 @@ macro_rules! lazy {
         $vis static $name: once_cell::sync::Lazy<$t> = once_cell::sync::Lazy::new(|| $init);
     )
 }
+
+#[macro_export]
+macro_rules! let_irrefutable {
+    ($v:expr, $p:pat) => {
+        let $p = $v else { unreachable!() };
+    };
+}
+
+#[macro_export]
+macro_rules! match_irrefutable {
+    ($v:expr, $p:pat, $ret:expr) => {{
+        match $v {
+            $p => $ret,
+            _ => unreachable!(),
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_call_once {
+    () => {
+        $crate::assert_call_once!("This function can be only called once.")
+    };
+    ($($args:tt)+) => {{
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        static CALLED: AtomicBool = AtomicBool::new(false);
+
+        let called = CALLED.swap(true, Ordering::Relaxed);
+        assert!(called == false, $($args)+)
+    }}
+}

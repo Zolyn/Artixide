@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use color_eyre::Result;
 use crossterm::event::KeyCode;
 use ratatui::{
@@ -10,6 +12,7 @@ use crate::{
     config::Config,
     string::StringExt,
     tui::{
+        route::Route,
         widgets::{
             input::{Input, InputCommand},
             menu::{MenuArgs, SearchableMenu},
@@ -104,11 +107,11 @@ impl View for MainView {
                     return None;
                 }
 
-                let selected = format!("/{}", item.to_lowercase().replace(' ', "_"));
+                let route = Route::from_str(item).unwrap();
 
                 self.menu.reset_search();
 
-                Some(Msg::ChangeRoute(selected))
+                Some(Msg::ChangeRoute(route))
             }
             KeyCode::Esc if self.menu.search_enabled() => {
                 self.menu.reset_search();

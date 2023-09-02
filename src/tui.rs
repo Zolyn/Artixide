@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     env,
     io::{self, Stdout},
     path::PathBuf,
@@ -22,12 +21,13 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::{config::Config, lazy};
 
-use self::views::{
-    keyboard::Keyboard, locale::Locale, main::Main, mirror::Mirror, partition::Partition,
-    timezone::Timezone, View,
+use self::{
+    route::{Route, RouteMap},
+    views::View,
 };
 
 mod data;
+mod route;
 mod views;
 mod widgets;
 
@@ -47,7 +47,7 @@ pub enum Operation {
 #[derive(Debug)]
 pub enum Msg {
     Close(Operation),
-    ChangeRoute(String),
+    ChangeRoute(Route),
     BackToMain,
 }
 
@@ -98,39 +98,22 @@ fn is_tty() -> Result<bool> {
     Ok(term == "linux")
 }
 
-macro_rules! make_route_map {
-    ($($route:literal $view:ty),+ $(,)?) => {
-        <HashMap<&'static str, Box<dyn View>>>::from([
-            $(
-                ($route, <$view>::init()),
-            )+
-        ])
-    };
-}
-
 pub fn guide(config: &mut Config) -> Result<Operation> {
     let mut terminal = init().wrap_err("Init Tui")?;
 
-    let mut route_map = make_route_map! {
-        "/" Main,
-        "/keyboard_layout" Keyboard,
-        "/mirror" Mirror,
-        "/locale" Locale,
-        "/timezone" Timezone,
-        "/partition" Partition
-    };
+    let mut route_map = RouteMap::new();
 
-    let mut route = "/".to_string();
+    let mut route = Route::Main;
 
     loop {
-        let view = route_map.get_mut(route.as_str()).unwrap();
+        let view = route_map.get_mut(route);
 
         let command = render_view(&mut terminal, view, config)
-            .wrap_err_with(|| eyre!("Failed to render route: {}", route))?;
+            .wrap_err_with(|| eyre!("Failed to render route: {:?}", route))?;
 
         match command {
             Msg::ChangeRoute(r) => route = r,
-            Msg::BackToMain => route = "/".to_string(),
+            Msg::BackToMain => route = Route::Main,
             Msg::Close(operation) => {
                 TUI_RUNNING.store(false, Ordering::Relaxed);
 
@@ -143,7 +126,7 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
 
 fn render_view(
     terminal: &mut Terminal<TuiBackend>,
-    view: &mut Box<dyn View>,
+    view: &mut dyn View,
     config: &mut Config,
 ) -> Result<Msg> {
     let mut err = None;

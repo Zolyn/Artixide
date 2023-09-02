@@ -52,6 +52,7 @@ enum Focus {
 pub struct DiskEditor {
     items: Vec<&'static str>,
     menu: Menu,
+    fs_menu: Menu,
     input: Input,
     last_selected: Option<usize>,
     focus: Focus,
@@ -426,6 +427,7 @@ impl Default for DiskEditor {
         Self {
             items: Vec::with_capacity(6),
             menu: Menu::default(),
+            fs_menu: Menu::default(),
             input: Input::default(),
             last_selected: None,
             focus: Focus::Menu,

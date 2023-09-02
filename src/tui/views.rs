@@ -11,12 +11,19 @@ use crate::config::Config;
 
 use super::{Msg, TuiBackend};
 
-pub mod keyboard;
-pub mod locale;
-pub mod main;
-pub mod mirror;
-pub mod partition;
-pub mod timezone;
+mod keyboard;
+mod locale;
+mod main;
+mod mirror;
+mod partition;
+mod timezone;
+
+pub use keyboard::Keyboard;
+pub use locale::Locale;
+pub use main::Main;
+pub use mirror::Mirror;
+pub use partition::Partition;
+pub use timezone::Timezone;
 
 pub trait View: Debug {
     fn render(&mut self, frame: &mut Frame<TuiBackend>) -> Result<()>;
@@ -53,18 +60,6 @@ macro_rules! fetch_data_if_needed {
 }
 
 #[macro_export]
-macro_rules! assert_call_once {
-    () => {{
-        use std::sync::atomic::{AtomicBool, Ordering};
-
-        static CALLED: AtomicBool = AtomicBool::new(false);
-
-        let called = CALLED.swap(true, Ordering::Relaxed);
-        assert!(called == false, "View can be only created once")
-    }};
-}
-
-#[macro_export]
 macro_rules! wrap_view {
     ($inner:ty, $name:ident) => {
         #[derive(Debug)]
@@ -78,21 +73,4 @@ macro_rules! wrap_view {
             }
         }
     };
-}
-
-#[macro_export]
-macro_rules! let_irrefutable {
-    ($v:expr, $p:pat) => {
-        let $p = $v else { unreachable!() };
-    };
-}
-
-#[macro_export]
-macro_rules! match_irrefutable {
-    ($v:expr, $p:pat, $ret:expr) => {{
-        match $v {
-            $p => $ret,
-            _ => unreachable!(),
-        }
-    }};
 }
