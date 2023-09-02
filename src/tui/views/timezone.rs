@@ -1,31 +1,26 @@
 use color_eyre::Result;
 use crossterm::event::KeyCode;
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
-use crate::{
-    fetch_data_if_needed,
-    tui::{
+use crate::tui::{
         data::timezones::get_timezones,
         widgets::{
             menu::{CachedSearchableMenu, MenuArgs},
             Widget,
         },
         Msg, TuiBackend,
-    },
-    wrap_view,
-};
+    };
 
-use super::{vertical_layout, View};
+use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
-wrap_view!(TimezoneView, Timezone);
-
-#[derive(Debug, Default)]
-struct TimezoneView {
+#[derive(Debug, Default, WrappedView!)]
+struct Timezone {
     layout: Layout,
     menu: CachedSearchableMenu<String>,
 }
 
-impl TimezoneView {
+impl Timezone {
     fn new() -> Self {
         let layout = vertical_layout([
             Constraint::Length(3),
@@ -40,7 +35,7 @@ impl TimezoneView {
     }
 }
 
-impl View for TimezoneView {
+impl View for Timezone {
     fn on_event(
         &mut self,
         event: crossterm::event::KeyEvent,

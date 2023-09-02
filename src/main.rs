@@ -9,10 +9,9 @@ use crate::app::{
 };
 
 mod app;
-mod command;
 mod config;
+mod extensions;
 mod macros;
-mod string;
 mod tui;
 
 fn main() -> Result<()> {

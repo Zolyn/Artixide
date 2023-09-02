@@ -5,7 +5,7 @@ use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
 use smart_default::SmartDefault;
 
 use crate::{
-    delegate_selection_methods, impl_search_methods, string::StrExt,
+    delegate_selection_methods, extensions::StrExt, impl_search_methods,
     tui::widgets::WidgetEventHandler,
 };
 

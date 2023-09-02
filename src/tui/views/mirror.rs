@@ -2,24 +2,19 @@ use color_eyre::Result;
 use crossterm::event::KeyCode;
 use indoc::{formatdoc, indoc};
 
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout, Rect};
 
-use crate::{
-    fetch_data_if_needed,
-    tui::{
+use crate::tui::{
         data::mirror::get_mirrors,
         widgets::{
             menu::{CachedSearchableMenu, Menu, MenuArgs},
             Widget,
         },
         Msg, TuiBackend,
-    },
-    wrap_view,
-};
+    };
 
-use super::{vertical_layout, View};
-
-wrap_view!(MirrorView, Mirror);
+use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
 const MIRROR_TYPES: &[&str] = &["Mirror group", "Single mirror"];
 const FILE_HEADER: &str = indoc! {"
@@ -34,8 +29,8 @@ enum MirrorMenu {
     Single,
 }
 
-#[derive(Debug, Default)]
-struct MirrorView {
+#[derive(Debug, Default, WrappedView!)]
+struct Mirror {
     main_menu: Menu,
     mirror_menus: [CachedSearchableMenu<String>; 2],
     layout: Layout,
@@ -44,7 +39,7 @@ struct MirrorView {
     default_servers_count: usize,
 }
 
-impl MirrorView {
+impl Mirror {
     fn new() -> Self {
         let layout = vertical_layout([
             Constraint::Length(5),
@@ -66,7 +61,7 @@ macro_rules! get_menu_mut_unchecked {
     };
 }
 
-impl View for MirrorView {
+impl View for Mirror {
     fn on_event(
         &mut self,
         event: crossterm::event::KeyEvent,

@@ -13,8 +13,8 @@ use ratatui::{
 };
 
 use crate::{
+    extensions::Take,
     let_irrefutable,
-    string::StringExt,
     tui::{
         data::partition::{
             Device, DiskSpace, MemPartition, MemTableEntry, Modification, ModificationType,

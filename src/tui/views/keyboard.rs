@@ -1,11 +1,11 @@
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::KeyCode;
 
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
     config::Config,
-    fetch_data_if_needed,
     tui::{
         data::keyboard::get_keyboard_layouts,
         widgets::{
@@ -14,20 +14,17 @@ use crate::{
         },
         Msg, TuiBackend,
     },
-    wrap_view,
 };
 
-use super::{vertical_layout, View};
+use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
-wrap_view!(KeyboardInner, Keyboard);
-
-#[derive(Debug, Default)]
-struct KeyboardInner {
+#[derive(Debug, Default, WrappedView!)]
+struct Keyboard {
     menu: CachedSearchableMenu<String>,
     layout: Layout,
 }
 
-impl KeyboardInner {
+impl Keyboard {
     fn new() -> Self {
         let layout = vertical_layout([
             Constraint::Length(3),
@@ -42,7 +39,7 @@ impl KeyboardInner {
     }
 }
 
-impl View for KeyboardInner {
+impl View for Keyboard {
     fn on_event(
         &mut self,
         event: crossterm::event::KeyEvent,

@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use super::{Menu, MenuArgs};
-use crate::{delegate_selection_methods, string::StrExt, tui::widgets::WidgetEventHandler};
+use crate::{delegate_selection_methods, extensions::StrExt, tui::widgets::WidgetEventHandler};
 
 pub const SEARCH_TIP: &str = r#"(Press "/" to search)"#;
 

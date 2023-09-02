@@ -1,5 +1,6 @@
 use color_eyre::eyre::bail;
 use crossterm::event::{KeyCode, KeyEvent};
+use macro_rules_attribute::derive;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
@@ -11,7 +12,7 @@ use ratatui::{
 use self::editor::DiskEditor;
 use crate::{
     config::Config,
-    fetch_data_if_needed, lazy, let_irrefutable,
+    lazy, let_irrefutable,
     tui::{
         data::partition::{get_devices, Device, DiskSpace, MemPartition, MemTableEntry},
         widgets::{
@@ -20,14 +21,11 @@ use crate::{
         },
         Msg, TuiBackend,
     },
-    wrap_view,
 };
 
-use super::{vertical_layout, View};
+use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
 mod editor;
-
-wrap_view!(PartitionView, Partition);
 
 lazy! {
     static LAYOUT: Layout = vertical_layout([
@@ -68,8 +66,8 @@ enum Focus {
     Editor,
 }
 
-#[derive(Debug, Default)]
-struct PartitionView {
+#[derive(Debug, Default, WrappedView!)]
+struct Partition {
     devices: Vec<Device>,
     current_device: usize,
     table: Table,
@@ -77,7 +75,7 @@ struct PartitionView {
     editor: DiskEditor,
 }
 
-impl PartitionView {
+impl Partition {
     fn new() -> Self {
         Self {
             current_device: 0,
@@ -139,7 +137,7 @@ macro_rules! get_device_mut {
     };
 }
 
-impl PartitionView {
+impl Partition {
     fn render_table(&mut self, frame: &mut Frame<TuiBackend>, area: Rect) {
         let focus = matches!(self.focus, Focus::Table);
 
@@ -187,7 +185,7 @@ impl PartitionView {
     }
 }
 
-impl PartitionView {
+impl Partition {
     fn handle_table(&mut self, event: KeyEvent, _config: &mut Config) -> Option<Msg> {
         match event.code {
             KeyCode::Char('q') => Some(Msg::BackToMain),
@@ -200,7 +198,7 @@ impl PartitionView {
     }
 }
 
-impl View for PartitionView {
+impl View for Partition {
     fn on_event(
         &mut self,
         event: crossterm::event::KeyEvent,

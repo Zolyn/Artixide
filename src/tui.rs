@@ -21,13 +21,10 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::{config::Config, lazy};
 
-use self::{
-    route::{Route, RouteMap},
-    views::View,
-};
+use self::views::{Route, RouteMap, View};
 
 mod data;
-mod route;
+mod route_map;
 mod views;
 mod widgets;
 
@@ -102,7 +99,6 @@ pub fn guide(config: &mut Config) -> Result<Operation> {
     let mut terminal = init().wrap_err("Init Tui")?;
 
     let mut route_map = RouteMap::new();
-
     let mut route = Route::Main;
 
     loop {
@@ -142,12 +138,10 @@ fn render_view(
             return Err(err);
         }
 
-        if let Event::Key(key_event) = event::read().wrap_err("Read events")? {
-            let command = view.on_event(key_event, config);
+        let Event::Key(key_event) = event::read().wrap_err("Read events")? else { continue };
 
-            if let Some(command) = command {
-                break Ok(command);
-            }
+        if let Some(command) = view.on_event(key_event, config) {
+            break Ok(command);
         }
     }
 }

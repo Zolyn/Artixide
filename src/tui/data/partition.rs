@@ -10,7 +10,7 @@ use serde::Deserialize;
 use strum::{AsRefStr, EnumCount, EnumDiscriminants, EnumString};
 use typed_builder::TypedBuilder;
 
-use crate::command::CommandExt;
+use crate::extensions::CommandExt;
 
 mod impls;
 

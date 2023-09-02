@@ -1,10 +1,10 @@
 use color_eyre::Result;
 use crossterm::event::KeyCode;
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
     config::locale::LocaleConfig,
-    fetch_data_if_needed,
     tui::{
         data::locale::get_locales,
         widgets::{
@@ -13,12 +13,9 @@ use crate::{
         },
         Msg, TuiBackend,
     },
-    wrap_view,
 };
 
-use super::{horizontal_layout, vertical_layout, View};
-
-wrap_view!(LocaleView, Locale);
+use super::{horizontal_layout, vertical_layout, View, fetch_data_if_needed, WrappedView};
 
 #[derive(Debug, Default, Clone, Copy)]
 enum Focus {
@@ -37,8 +34,8 @@ impl Focus {
     }
 }
 
-#[derive(Debug, Default)]
-struct LocaleView {
+#[derive(Debug, Default, WrappedView!)]
+struct Locale {
     menus: [CachedSearchableMenu<String>; 2],
     v_layout: Layout,
     h_layout: Layout,
@@ -51,7 +48,7 @@ macro_rules! get_menu_mut {
     };
 }
 
-impl LocaleView {
+impl Locale {
     fn new() -> Self {
         let v_layout = vertical_layout([
             Constraint::Length(3),
@@ -114,7 +111,7 @@ impl LocaleView {
     }
 }
 
-impl View for LocaleView {
+impl View for Locale {
     fn on_event(
         &mut self,
         event: crossterm::event::KeyEvent,

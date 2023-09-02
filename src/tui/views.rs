@@ -2,28 +2,27 @@ use std::fmt::Debug;
 
 use color_eyre::Result;
 use crossterm::event::KeyEvent;
+use macro_rules_attribute::derive;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     Frame,
 };
+use strum::{EnumCount, EnumString};
 
 use crate::config::Config;
 
-use super::{Msg, TuiBackend};
+use super::{route_map::RouteMap, Msg, TuiBackend};
 
-mod keyboard;
-mod locale;
-mod main;
-mod mirror;
-mod partition;
-mod timezone;
-
-pub use keyboard::Keyboard;
-pub use locale::Locale;
-pub use main::Main;
-pub use mirror::Mirror;
-pub use partition::Partition;
-pub use timezone::Timezone;
+#[derive(Debug, Clone, Copy, EnumCount, EnumString, RouteMap!)]
+pub enum Route {
+    Main,
+    #[strum(serialize = "Keyboard layout")]
+    Keyboard,
+    Mirror,
+    Locale,
+    Timezone,
+    Partition,
+}
 
 pub trait View: Debug {
     fn render(&mut self, frame: &mut Frame<TuiBackend>) -> Result<()>;
@@ -45,7 +44,6 @@ pub fn horizontal_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
     make_layout(constraints.into(), Direction::Horizontal)
 }
 
-#[macro_export]
 macro_rules! fetch_data_if_needed {
     ($f:stmt) => {{
         use std::sync::atomic::{AtomicBool, Ordering};
@@ -59,18 +57,23 @@ macro_rules! fetch_data_if_needed {
     }};
 }
 
-#[macro_export]
-macro_rules! wrap_view {
-    ($inner:ty, $name:ident) => {
-        #[derive(Debug)]
-        pub struct $name;
+macro_rules! WrappedView {
+    (
+        $(#[$meta:meta])*
+        struct $name:ident $rest:tt
+    ) => {
+        concat_idents::concat_idents!(struct_name = Wrapped, $name, {
+            pub struct struct_name;
 
-        impl $name {
-            pub fn init() -> Box<dyn $crate::tui::views::View> {
-                $crate::assert_call_once!();
+            impl struct_name {
+                pub fn init() -> Box<dyn $crate::tui::views::View> {
+                    $crate::assert_call_once!();
 
-                Box::new(<$inner>::new())
+                    Box::new(<$name>::new())
+                }
             }
-        }
+        });
     };
 }
+
+pub(self) use {fetch_data_if_needed, WrappedView};
