@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 use ratatui::widgets::{ListState, TableState};
 
-use super::private::WidgetEventHandler;
+use super::event::WidgetEventHandler;
 
 #[derive(Debug, Default)]
 pub struct SelectableWidget<T> {

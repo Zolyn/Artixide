@@ -1,5 +1,4 @@
-use std::rc::Rc;
-
+use blanket::blanket;
 use crossterm::event::KeyCode;
 
 use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
@@ -15,6 +14,7 @@ use super::{
     Menu, MenuArgs,
 };
 
+#[blanket(derive(Rc))]
 pub trait AsMenuItem {
     fn as_menu_item(&self) -> &str;
 }
@@ -177,31 +177,14 @@ impl<T> WidgetEventHandler for CachedSearchableMenu<T> {
     }
 }
 
-macro_rules! impl_mapper {
-    ($self:ident, $($target:ty, $impl:stmt),+) => {
-        $(
-            impl AsMenuItem for $target {
-                fn as_menu_item(&$self) -> &str {
-                    $impl
-                }
-            }
-        )+
-    };
-    (@sp $($smart_pointer:ty)+) => {
-        $(
-            impl<T: AsMenuItem> AsMenuItem for $smart_pointer {
-                fn as_menu_item(&self) -> &str {
-                    T::as_menu_item(&self)
-                }
-            }
-        )+
+impl AsMenuItem for str {
+    fn as_menu_item(&self) -> &str {
+        self
     }
 }
 
-impl_mapper! {
-    self,
-    str, self,
-    String, self.as_str()
+impl AsMenuItem for String {
+    fn as_menu_item(&self) -> &str {
+        self
+    }
 }
-
-impl_mapper!(@sp Rc<T>);

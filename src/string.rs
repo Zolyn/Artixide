@@ -1,23 +1,19 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use sealed::sealed;
 
 use crate::lazy;
-
-use self::private::Sealed;
 
 lazy! {
     pub static FUZZY_MATCHER: SkimMatcherV2 = SkimMatcherV2::default();
 }
 
-mod private {
-    pub trait Sealed {}
-    impl<T: ?Sized> Sealed for T {}
-}
-
-pub trait StrExt: Sealed {
+#[sealed]
+pub trait StrExt {
     fn fuzzy_indices(&self, choice: &str) -> Option<Vec<usize>>;
     fn slice(&self, start: usize, end: usize) -> Option<&str>;
 }
 
+#[sealed]
 impl StrExt for str {
     fn fuzzy_indices(&self, choice: &str) -> Option<Vec<usize>> {
         FUZZY_MATCHER
@@ -43,10 +39,12 @@ impl StrExt for str {
     }
 }
 
-pub trait StringExt: Sealed {
+#[sealed]
+pub trait StringExt {
     fn take(&mut self) -> String;
 }
 
+#[sealed]
 impl StringExt for String {
     fn take(&mut self) -> String {
         std::mem::take(self)

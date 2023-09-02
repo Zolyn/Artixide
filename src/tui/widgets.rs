@@ -4,8 +4,9 @@ use ratatui::{
     style::{Color, Style},
     widgets::{Block, Borders},
 };
+use sealed::sealed;
 
-use self::private::{Sealed, WidgetEventHandler};
+use self::event::WidgetEventHandler;
 use super::{
     views::{horizontal_layout, vertical_layout},
     Msg,
@@ -60,7 +61,7 @@ macro_rules! widget_args {
     }
 }
 
-mod private {
+mod event {
     use crossterm::event::KeyEvent;
 
     use super::Widget;
@@ -70,9 +71,6 @@ mod private {
     }
 
     impl<T: WidgetEventHandler> Widget for T {}
-
-    pub trait Sealed {}
-    impl<T> Sealed for T {}
 }
 
 pub trait Widget: WidgetEventHandler {
@@ -82,7 +80,8 @@ pub trait Widget: WidgetEventHandler {
     }
 }
 
-pub trait BlockExt: Sealed {
+#[sealed]
+pub trait BlockExt {
     fn with_borders() -> Block<'static> {
         Block::default()
             .borders(Borders::all())
@@ -90,14 +89,17 @@ pub trait BlockExt: Sealed {
     }
 }
 
+#[sealed]
 impl BlockExt for Block<'_> {}
 
-pub trait StyleExt: Sealed {
+#[sealed]
+pub trait StyleExt {
     fn with_fg() -> Style {
         Style::default().fg(Color::Gray)
     }
 }
 
+#[sealed]
 impl StyleExt for Style {}
 
 pub fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {

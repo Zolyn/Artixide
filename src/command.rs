@@ -1,17 +1,15 @@
 use std::process::{Command, Output};
 
 use color_eyre::{eyre::eyre, Help, Report, Result, SectionExt};
+use sealed::sealed;
 
-mod private {
-    pub trait Sealed {}
-    impl<T> Sealed for T {}
-}
-
-pub trait CommandExt: private::Sealed {
+#[sealed]
+pub trait CommandExt {
     fn run(&mut self) -> Result<()>;
     fn read(&mut self) -> Result<String>;
 }
 
+#[sealed]
 impl CommandExt for Command {
     fn run(&mut self) -> Result<()> {
         let Output {
