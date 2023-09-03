@@ -1,14 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use derive_more::{Deref, DerefMut};
 use ratatui::{backend::Backend, layout::Rect, text::Line, widgets::Paragraph, Frame};
 use unicode_width::UnicodeWidthStr;
+
+use crate::extensions::Take;
 
 pub enum InputCommand {
     Cancel,
     Submit,
 }
 
-#[derive(Debug, Default, Deref, DerefMut)]
+#[derive(Debug, Default)]
 pub struct Input {
     input: String,
 }
@@ -45,6 +46,20 @@ impl Input {
             }
             KeyCode::Esc => Some(InputCommand::Cancel),
             _ => None,
+        }
+    }
+
+    pub fn take(&mut self) -> String {
+        self.input.take()
+    }
+}
+
+impl Input {
+    delegate::delegate! {
+        to self.input {
+            pub fn as_str(&self) -> &str;
+            pub fn clear(&mut self);
+            pub fn push(&mut self, c: char);
         }
     }
 }

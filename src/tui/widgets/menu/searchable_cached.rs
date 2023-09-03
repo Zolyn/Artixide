@@ -1,6 +1,6 @@
 use crossterm::event::KeyCode;
 
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
 
 use crate::{
@@ -18,8 +18,7 @@ pub trait AsMenuItem {
     fn as_menu_item(&self) -> &str;
 }
 
-#[derive(Debug)]
-#[macro_rules_derive(LooseDefault)]
+#[derive(Debug, LooseDefault!)]
 pub struct CachedSearchableMenu<T> {
     inner: Menu,
     search_input: String,

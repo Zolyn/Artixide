@@ -2,7 +2,7 @@ use color_eyre::Result;
 use crossterm::event::KeyCode;
 use indoc::{formatdoc, indoc};
 
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout, Rect};
 
 use crate::tui::{
@@ -29,8 +29,7 @@ enum MirrorMenu {
     Single,
 }
 
-#[derive(Debug, Default)]
-#[macro_rules_derive(WrappedView)]
+#[derive(Debug, Default, WrappedView!)]
 struct Mirror {
     main_menu: Menu,
     mirror_menus: [CachedSearchableMenu<String>; 2],

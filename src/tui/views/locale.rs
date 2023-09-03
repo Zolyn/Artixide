@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use crossterm::event::KeyCode;
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
@@ -12,10 +12,24 @@ use crate::{
             Widget,
         },
         Msg, TuiBackend,
-    },
+    }, lazy,
 };
 
 use super::{horizontal_layout, vertical_layout, View, fetch_data_if_needed, WrappedView};
+
+lazy! {
+    static V_LAYOUT: Layout = vertical_layout([
+        Constraint::Length(3),
+        Constraint::Min(24),
+        Constraint::Length(1),
+    ]);
+
+    static H_LAYOUT: Layout = horizontal_layout([
+        Constraint::Percentage(49),
+        Constraint::Percentage(2),
+        Constraint::Percentage(49),
+    ]);
+}
 
 #[derive(Debug, Default, Clone, Copy)]
 enum Focus {
@@ -34,12 +48,9 @@ impl Focus {
     }
 }
 
-#[derive(Debug, Default)]
-#[macro_rules_derive(WrappedView)]
+#[derive(Debug, Default, WrappedView!)]
 struct Locale {
     menus: [CachedSearchableMenu<String>; 2],
-    v_layout: Layout,
-    h_layout: Layout,
     focus: Focus,
 }
 
@@ -51,23 +62,7 @@ macro_rules! get_menu_mut {
 
 impl Locale {
     fn new() -> Self {
-        let v_layout = vertical_layout([
-            Constraint::Length(3),
-            Constraint::Min(24),
-            Constraint::Length(1),
-        ]);
-
-        let h_layout = horizontal_layout([
-            Constraint::Percentage(49),
-            Constraint::Percentage(2),
-            Constraint::Percentage(49),
-        ]);
-
-        Self {
-            v_layout,
-            h_layout,
-            ..Default::default()
-        }
+        Self::default()
     }
 
     fn handle_select(&mut self, locale: &mut LocaleConfig) -> Option<Msg> {
@@ -154,9 +149,9 @@ impl View for Locale {
             menu.replace_items(encodings);
         });
 
-        let v_chunks = self.v_layout.split(frame.size());
+        let v_chunks = V_LAYOUT.split(frame.size());
 
-        let h_chunks = self.h_layout.split(v_chunks[1]);
+        let h_chunks = H_LAYOUT.split(v_chunks[1]);
 
         let [lang, enc] = &mut self.menus;
 

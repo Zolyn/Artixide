@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     text::{Line, Span},
@@ -11,18 +11,17 @@ use ratatui::{
 
 use crate::{
     config::Config,
-    extensions::Take,
+    extensions::{Take, BlockExt},
     lazy,
     tui::{
         views::Route,
         widgets::{
             input::{Input, InputCommand},
             menu::{MenuArgs, SearchableMenu},
-            BlockExt, Widget,
+             Widget,
         },
         Msg, Operation, TuiBackend,
-    },
-    Take
+    }, impl_take,
 };
 
 use super::{vertical_layout, View, WrappedView};
@@ -48,15 +47,15 @@ const ITEMS: &[&str] = &[
 ];
 
 #[derive(Debug, Default, Clone, Copy)]
-#[macro_rules_derive(Take)]
 enum Focus {
     #[default]
     Menu,
     Hostname,
 }
 
-#[derive(Debug, Default)]
-#[macro_rules_derive(WrappedView)]
+impl_take!(Focus);
+
+#[derive(Debug, Default, WrappedView!)]
 struct Main {
     menu: SearchableMenu,
     focus: Focus,

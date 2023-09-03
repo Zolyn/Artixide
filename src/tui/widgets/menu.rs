@@ -8,7 +8,9 @@ use ratatui::{
 pub mod searchable;
 pub mod searchable_cached;
 
-use super::{selectable::SelectableWidget, set_if_some, widget_args, StyleExt};
+use crate::extensions::StyleExt;
+
+use super::{selectable::SelectableWidget, set_if_some, widget_args};
 pub use searchable::SearchableMenu;
 pub use searchable_cached::CachedSearchableMenu;
 

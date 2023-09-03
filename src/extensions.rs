@@ -2,6 +2,10 @@ use std::process::{Command, Output};
 
 use color_eyre::{eyre::eyre, Help, Report, Result, SectionExt};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use ratatui::{
+    style::{Color, Style},
+    widgets::{Block, Borders},
+};
 use sealed::sealed;
 
 use crate::lazy;
@@ -88,6 +92,28 @@ impl StrExt for str {
     }
 }
 
+#[sealed]
+pub trait BlockExt {
+    fn with_borders() -> Block<'static> {
+        Block::default()
+            .borders(Borders::all())
+            .style(Style::with_fg())
+    }
+}
+
+#[sealed]
+impl BlockExt for Block<'_> {}
+
+#[sealed]
+pub trait StyleExt {
+    fn with_fg() -> Style {
+        Style::default().fg(Color::Gray)
+    }
+}
+
+#[sealed]
+impl StyleExt for Style {}
+
 pub trait Take: Default {
     fn take(&mut self) -> Self {
         std::mem::take(self)
@@ -95,26 +121,3 @@ pub trait Take: Default {
 }
 
 impl Take for String {}
-
-#[macro_export]
-macro_rules! Take {
-    (
-        $(#[$meta:meta])*
-        $vis:vis
-        enum $name:ident $rest:tt
-    ) => {
-        $crate::Take!(@imp $name);
-    };
-
-    (
-        $(#[$meta:meta])*
-        $vis:vis
-        struct $name:ident $rest:tt
-    ) => {
-        $crate::Take!(@imp $name);
-    };
-
-    (@imp $name:ident) => {
-        impl $crate::extensions::Take for $name {}
-    }
-}

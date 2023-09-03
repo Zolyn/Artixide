@@ -13,7 +13,7 @@ use ratatui::{
 };
 
 use crate::{
-    extensions::Take,
+    extensions::{Take, BlockExt},
     let_irrefutable,
     tui::{
         data::partition::{
@@ -23,7 +23,7 @@ use crate::{
         widgets::{
             input::{Input, InputCommand},
             menu::{Menu, MenuArgs},
-            BlockExt, Widget,
+            Widget,
         },
         Msg, TuiBackend,
     },

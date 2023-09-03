@@ -1,16 +1,10 @@
-use crossterm::event::KeyEvent;
-use ratatui::{
-    layout::{Constraint, Rect},
-    style::{Color, Style},
-    widgets::{Block, Borders},
-};
-use sealed::sealed;
-
 use self::event::WidgetEventHandler;
 use super::{
     views::{horizontal_layout, vertical_layout},
     Msg,
 };
+use crossterm::event::KeyEvent;
+use ratatui::layout::{Constraint, Rect};
 
 pub mod input;
 pub mod menu;
@@ -38,10 +32,7 @@ macro_rules! widget_args {
                 Frame
             };
 
-            use $crate::tui::{
-                widgets::BlockExt,
-                TuiBackend
-            };
+            use $crate::{tui::TuiBackend, extensions::*};
 
             #[derive(TypedBuilder)]
             pub struct $name<'a, 'b: 'a> {
@@ -80,28 +71,6 @@ pub trait Widget: WidgetEventHandler {
         None
     }
 }
-
-#[sealed]
-pub trait BlockExt {
-    fn with_borders() -> Block<'static> {
-        Block::default()
-            .borders(Borders::all())
-            .style(Style::with_fg())
-    }
-}
-
-#[sealed]
-impl BlockExt for Block<'_> {}
-
-#[sealed]
-pub trait StyleExt {
-    fn with_fg() -> Style {
-        Style::default().fg(Color::Gray)
-    }
-}
-
-#[sealed]
-impl StyleExt for Style {}
 
 pub fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
     let v_pack_size = (area.height - height) / 2;

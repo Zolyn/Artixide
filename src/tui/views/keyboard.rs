@@ -1,7 +1,7 @@
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::KeyCode;
 
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
@@ -13,30 +13,27 @@ use crate::{
             Widget,
         },
         Msg, TuiBackend,
-    },
+    }, lazy,
 };
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
-#[derive(Debug, Default)]
-#[macro_rules_derive(WrappedView)]
+lazy! {
+    static LAYOUT: Layout = vertical_layout([
+        Constraint::Length(3),
+        Constraint::Min(24),
+        Constraint::Length(1),
+    ]);
+}
+
+#[derive(Debug, Default, WrappedView!)]
 struct Keyboard {
     menu: CachedSearchableMenu<String>,
-    layout: Layout,
 }
 
 impl Keyboard {
     fn new() -> Self {
-        let layout = vertical_layout([
-            Constraint::Length(3),
-            Constraint::Min(24),
-            Constraint::Length(1),
-        ]);
-
-        Self {
-            layout,
-            ..Default::default()
-        }
+        Self::default()
     }
 }
 
@@ -73,7 +70,7 @@ impl View for Keyboard {
             self.menu.replace_items(layouts);
         });
 
-        let chunks = self.layout.split(frame.size());
+        let chunks = LAYOUT.split(frame.size());
 
         self.menu
             .render_default(MenuArgs::builder().frame(frame).area(chunks[1]).build());
