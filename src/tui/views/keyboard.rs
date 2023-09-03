@@ -1,7 +1,7 @@
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::KeyCode;
 
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
@@ -18,7 +18,8 @@ use crate::{
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
-#[derive(Debug, Default, WrappedView!)]
+#[derive(Debug, Default)]
+#[macro_rules_derive(WrappedView)]
 struct Keyboard {
     menu: CachedSearchableMenu<String>,
     layout: Layout,

@@ -1,7 +1,6 @@
-use blanket::blanket;
 use crossterm::event::KeyCode;
 
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
 
 use crate::{
@@ -15,12 +14,12 @@ use super::{
     Menu, MenuArgs,
 };
 
-#[blanket(derive(Rc))]
 pub trait AsMenuItem {
     fn as_menu_item(&self) -> &str;
 }
 
-#[derive(Debug, LooseDefault!)]
+#[derive(Debug)]
+#[macro_rules_derive(LooseDefault)]
 pub struct CachedSearchableMenu<T> {
     inner: Menu,
     search_input: String,

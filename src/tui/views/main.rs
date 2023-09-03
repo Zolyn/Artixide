@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     text::{Line, Span},
@@ -47,14 +47,16 @@ const ITEMS: &[&str] = &[
     "Init",
 ];
 
-#[derive(Debug, Default, Clone, Copy, Take!)]
+#[derive(Debug, Default, Clone, Copy)]
+#[macro_rules_derive(Take)]
 enum Focus {
     #[default]
     Menu,
     Hostname,
 }
 
-#[derive(Debug, Default, WrappedView!)]
+#[derive(Debug, Default)]
+#[macro_rules_derive(WrappedView)]
 struct Main {
     menu: SearchableMenu,
     focus: Focus,

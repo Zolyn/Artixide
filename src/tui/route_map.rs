@@ -11,9 +11,9 @@ macro_rules! RouteMap {
         }
     ) => {
         $(
-            casey::lower!(
-                mod $variant;
-            );
+            paste::paste! {
+                mod [<$variant:lower>];
+            }
         )*
 
         #[derive(Debug)]
@@ -37,13 +37,15 @@ macro_rules! RouteMap {
                 $crate::assert_call_once!();
 
                 $(
-                    casey::lower!(use $variant::*;);
+                    paste::paste! {
+                        use [<$variant:lower>]::[<Wrapped $variant>];
+                    }
                 )*
 
                 RouteMap::from_unchecked(
                     [
                         $(
-                            ($name::$variant, <concat_idents::concat_idents!(view = Wrapped, $variant, { view })>::init())
+                            ($name::$variant, <paste::paste!([<Wrapped $variant>])>::init())
                         ),*
                     ]
                 )

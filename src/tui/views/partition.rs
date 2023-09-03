@@ -1,6 +1,6 @@
 use color_eyre::eyre::bail;
 use crossterm::event::{KeyCode, KeyEvent};
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
@@ -66,7 +66,8 @@ enum Focus {
     Editor,
 }
 
-#[derive(Debug, Default, WrappedView!)]
+#[derive(Debug, Default)]
+#[macro_rules_derive(WrappedView)]
 struct Partition {
     devices: Vec<Device>,
     current_device: usize,

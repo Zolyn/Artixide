@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use crossterm::event::KeyCode;
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::layout::{Constraint, Layout};
 
 use crate::{
@@ -34,7 +34,8 @@ impl Focus {
     }
 }
 
-#[derive(Debug, Default, WrappedView!)]
+#[derive(Debug, Default)]
+#[macro_rules_derive(WrappedView)]
 struct Locale {
     menus: [CachedSearchableMenu<String>; 2],
     v_layout: Layout,

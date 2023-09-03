@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use color_eyre::Result;
 use crossterm::event::KeyEvent;
-use macro_rules_attribute::derive;
+use macro_rules_attribute::macro_rules_derive;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     Frame,
@@ -13,7 +13,8 @@ use crate::config::Config;
 
 use super::{route_map::RouteMap, Msg, TuiBackend};
 
-#[derive(Debug, Clone, Copy, EnumCount, EnumString, RouteMap!)]
+#[derive(Debug, Clone, Copy, EnumCount, EnumString)]
+#[macro_rules_derive(RouteMap)]
 pub enum Route {
     Main,
     #[strum(serialize = "Keyboard layout")]
@@ -62,17 +63,17 @@ macro_rules! WrappedView {
         $(#[$meta:meta])*
         struct $name:ident $rest:tt
     ) => {
-        concat_idents::concat_idents!(struct_name = Wrapped, $name, {
-            pub struct struct_name;
+        paste::paste! {
+            pub struct [<Wrapped $name>];
 
-            impl struct_name {
+            impl [<Wrapped $name>] {
                 pub fn init() -> Box<dyn $crate::tui::views::View> {
                     $crate::assert_call_once!();
 
                     Box::new(<$name>::new())
                 }
             }
-        });
+        }
     };
 }
 
