@@ -85,7 +85,6 @@ impl<T: Selectable> WidgetEventHandler for SelectableWidget<T> {
     }
 }
 
-#[macro_export]
 macro_rules! delegate_selection_methods {
     ($self:ident.$field:tt) => {
         delegate::delegate! {
@@ -98,6 +97,8 @@ macro_rules! delegate_selection_methods {
         }
     };
 }
+
+pub(super) use delegate_selection_methods;
 
 pub trait Selectable {
     fn offset(&self) -> usize;

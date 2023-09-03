@@ -1,16 +1,17 @@
 use blanket::blanket;
 use crossterm::event::KeyCode;
 
+use macro_rules_attribute::derive;
 use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
-use smart_default::SmartDefault;
 
 use crate::{
-    delegate_selection_methods, extensions::StrExt, impl_search_methods,
-    tui::widgets::WidgetEventHandler,
+    extensions::StrExt,
+    tui::widgets::{selectable::delegate_selection_methods, WidgetEventHandler},
+    LooseDefault,
 };
 
 use super::{
-    searchable::{stylize_matched_item, SEARCH_TIP},
+    searchable::{impl_search_methods, stylize_matched_item, SEARCH_TIP},
     Menu, MenuArgs,
 };
 
@@ -19,7 +20,7 @@ pub trait AsMenuItem {
     fn as_menu_item(&self) -> &str;
 }
 
-#[derive(Debug, SmartDefault)]
+#[derive(Debug, LooseDefault!)]
 pub struct CachedSearchableMenu<T> {
     inner: Menu,
     search_input: String,
@@ -30,15 +31,6 @@ pub struct CachedSearchableMenu<T> {
 }
 
 impl<T> CachedSearchableMenu<T> {
-    pub fn new<I: Into<Vec<T>>>(items: I) -> Self {
-        let items: Vec<T> = items.into();
-
-        Self {
-            items,
-            ..Default::default()
-        }
-    }
-
     pub fn current_index(&self) -> Option<usize> {
         let mut index = self.inner.current_index()?;
 

@@ -9,11 +9,13 @@ use ratatui::{
 };
 
 use super::{Menu, MenuArgs};
-use crate::{delegate_selection_methods, extensions::StrExt, tui::widgets::WidgetEventHandler};
+use crate::{
+    extensions::StrExt,
+    tui::widgets::{selectable::delegate_selection_methods, WidgetEventHandler},
+};
 
 pub const SEARCH_TIP: &str = r#"(Press "/" to search)"#;
 
-#[macro_export]
 macro_rules! impl_search_methods {
     () => {
         pub fn is_searching(&self) -> bool {
@@ -43,6 +45,8 @@ macro_rules! impl_search_methods {
         }
     };
 }
+
+pub(super) use impl_search_methods;
 
 pub fn stylize_matched_item<'a, I: AsRef<str> + ?Sized>(
     item: &'a I,

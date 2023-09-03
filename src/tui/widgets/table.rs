@@ -1,9 +1,7 @@
 use derive_more::{Deref, DerefMut};
 use ratatui::widgets::{Row, Table as RawTable, TableState};
 
-use crate::widget_args;
-
-use super::selectable::SelectableWidget;
+use super::{selectable::SelectableWidget, widget_args};
 
 widget_args! {
     TableArgs {

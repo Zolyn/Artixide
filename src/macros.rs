@@ -44,3 +44,28 @@ macro_rules! assert_call_once {
         assert!(called == false, $($args)+)
     }}
 }
+
+#[macro_export]
+macro_rules! LooseDefault {
+    (
+        $(#[$struct_meta:meta])*
+        $vis:vis
+        struct $name:ident<$($gen:ident),+> {
+            $(
+                $(#[$field_meta:meta])*
+                $field:ident : $field_ty:ty
+            ),*
+            $(,)*
+        }
+    ) => {
+        impl<$($gen)+> Default for $name<$($gen)+> {
+            fn default() -> Self {
+                Self {
+                    $(
+                        $field : <$field_ty>::default()
+                    ),*
+                }
+            }
+        }
+    };
+}

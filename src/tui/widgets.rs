@@ -14,12 +14,11 @@ use super::{
 
 pub mod input;
 pub mod menu;
-mod selectable;
+pub mod selectable;
 pub mod table;
 
 // Referfences:
 // https://users.rust-lang.org/t/how-to-match-a-optional-repetition-character-eg-with-input-when-defining-macro/64123
-#[macro_export]
 macro_rules! widget_args {
     (
         $name:ident $({
@@ -60,6 +59,8 @@ macro_rules! widget_args {
         pub use __widget_args::$name;
     }
 }
+
+pub(self) use widget_args;
 
 mod event {
     use crossterm::event::KeyEvent;
@@ -121,7 +122,6 @@ pub fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
     .split(v_area)[1]
 }
 
-#[macro_export]
 macro_rules! set_if_some {
     ($target:ident, $field:ident) => {
         if let Some(field) = $field {
@@ -129,3 +129,5 @@ macro_rules! set_if_some {
         };
     };
 }
+
+pub(self) use set_if_some;

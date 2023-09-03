@@ -5,12 +5,10 @@ use ratatui::{
     widgets::{List, ListItem, ListState},
 };
 
-use crate::{set_if_some, widget_args};
-
 pub mod searchable;
 pub mod searchable_cached;
 
-use super::{selectable::SelectableWidget, StyleExt};
+use super::{selectable::SelectableWidget, set_if_some, widget_args, StyleExt};
 pub use searchable::SearchableMenu;
 pub use searchable_cached::CachedSearchableMenu;
 
