@@ -31,12 +31,6 @@ struct Keyboard {
     menu: CachedSearchableMenu<String>,
 }
 
-impl Keyboard {
-    fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl View for Keyboard {
     fn on_event(
         &mut self,

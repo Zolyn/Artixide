@@ -1,20 +1,30 @@
 use color_eyre::Result;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 use indoc::{formatdoc, indoc};
 
 use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout, Rect};
 
-use crate::tui::{
+use crate::{tui::{
         data::mirror::get_mirrors,
         widgets::{
             menu::{CachedSearchableMenu, Menu, MenuArgs},
             Widget,
         },
         Msg, TuiBackend,
-    };
+    }, lazy, config::Config, extensions::OptionExt};
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
+
+lazy! {
+    static LAYOUT: Layout = vertical_layout([
+        Constraint::Length(5),
+        Constraint::Min(4),
+        Constraint::Length(1),
+    ]);
+
+    static MAIN_MENU_LAYOUT: Layout = vertical_layout([Constraint::Length(4), Constraint::Min(1)]);
+}
 
 const MIRROR_TYPES: &[&str] = &["Mirror group", "Single mirror"];
 const FILE_HEADER: &str = indoc! {"
@@ -24,7 +34,7 @@ const FILE_HEADER: &str = indoc! {"
 "};
 
 #[derive(Debug, Clone, Copy)]
-enum MirrorMenu {
+enum Subview {
     Group,
     Single,
 }
@@ -33,54 +43,20 @@ enum MirrorMenu {
 struct Mirror {
     main_menu: Menu,
     mirror_menus: [CachedSearchableMenu<String>; 2],
-    layout: Layout,
-    mirror_type: Option<MirrorMenu>,
+    sub_view: Option<Subview>,
     servers: Vec<Vec<String>>,
     default_servers_count: usize,
-}
-
-impl Mirror {
-    fn new() -> Self {
-        let layout = vertical_layout([
-            Constraint::Length(5),
-            Constraint::Min(4),
-            Constraint::Length(1),
-        ]);
-
-        Self {
-            layout,
-            ..Default::default()
-        }
-    }
 }
 
 // TODO: Write a proc macro to create inline methods
 macro_rules! get_menu_mut_unchecked {
     ($self:ident) => {
-        &mut $self.mirror_menus[$self.mirror_type.unwrap() as usize]
+        &mut $self.mirror_menus[$self.sub_view.unwrap() as usize]
     };
 }
 
-impl View for Mirror {
-    fn on_event(
-        &mut self,
-        event: crossterm::event::KeyEvent,
-        config: &mut crate::config::Config,
-    ) -> Option<crate::tui::Msg> {
-        if self.mirror_type.is_none() {
-            match event.code {
-                KeyCode::Esc | KeyCode::Char('q') => return Some(Msg::BackToMain),
-                KeyCode::Enter => match MIRROR_TYPES[self.main_menu.current_index()?] {
-                    "Mirror group" => self.mirror_type = Some(MirrorMenu::Group),
-                    "Single mirror" => self.mirror_type = Some(MirrorMenu::Single),
-                    _ => unreachable!(),
-                },
-                _ => return self.main_menu.on_event(event),
-            };
-
-            return None;
-        }
-
+impl Mirror {
+    fn handle_subview(&mut self, event: KeyEvent, config: &mut Config) -> Option<Msg> {
         let menu = get_menu_mut_unchecked!(self);
 
         match event.code {
@@ -90,15 +66,15 @@ impl View for Mirror {
                     return None;
                 }
 
-                self.mirror_type.take();
+                self.sub_view.drop();
                 None
             }
             KeyCode::Char('q') if !menu.search_enabled() => {
-                self.mirror_type.take();
+                self.sub_view.drop();
                 None
             }
-            KeyCode::Enter => match self.mirror_type.unwrap() {
-                MirrorMenu::Group => {
+            KeyCode::Enter => match self.sub_view.unwrap() {
+                Subview::Group => {
                     let group = menu.current_item()?;
                     let servers = &self.servers[menu.current_index()?];
 
@@ -118,7 +94,7 @@ impl View for Mirror {
 
                     Some(Msg::BackToMain)
                 }
-                MirrorMenu::Single => {
+                Subview::Single => {
                     let index = menu.current_index()?;
                     let item = self
                         .servers
@@ -140,27 +116,50 @@ impl View for Mirror {
             _ => menu.on_event(event),
         }
     }
+}
+
+impl View for Mirror {
+    fn on_event(
+        &mut self,
+        event: crossterm::event::KeyEvent,
+        config: &mut crate::config::Config,
+    ) -> Option<crate::tui::Msg> {
+        if self.sub_view.is_some() {
+            return self.handle_subview(event, config)
+        }
+
+        match event.code {
+            KeyCode::Esc | KeyCode::Char('q') => return Some(Msg::BackToMain),
+            KeyCode::Enter => match MIRROR_TYPES[self.main_menu.current_index()?] {
+                "Mirror group" => self.sub_view = Some(Subview::Group),
+                "Single mirror" => self.sub_view = Some(Subview::Single),
+                _ => unreachable!(),
+            },
+            _ => return self.main_menu.on_event(event),
+        };
+
+        None
+    }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         fetch_data_if_needed!({
             let (group, servers, trim_servers, default_servers_count) = get_mirrors()?;
 
-            self.mirror_menus[MirrorMenu::Group as usize].replace_items(group);
+            self.mirror_menus[Subview::Group as usize].replace_items(group);
 
-            self.mirror_menus[MirrorMenu::Single as usize].replace_items(trim_servers);
+            self.mirror_menus[Subview::Single as usize].replace_items(trim_servers);
 
             self.servers = servers;
             self.default_servers_count = default_servers_count;
         });
 
-        let chunks = self.layout.split(frame.size());
+        let chunks = LAYOUT.split(frame.size());
 
         let area: Rect = chunks[1];
         let args = MenuArgs::builder().frame(frame);
 
-        if self.mirror_type.is_none() {
-            let area =
-                vertical_layout([Constraint::Length(4), Constraint::Min(1)]).split(chunks[1])[0];
+        if self.sub_view.is_none() {
+            let area = MAIN_MENU_LAYOUT.split(chunks[1])[0];
 
             self.main_menu.render(MIRROR_TYPES, args.area(area).build());
             return Ok(());
@@ -169,9 +168,9 @@ impl View for Mirror {
         let menu = get_menu_mut_unchecked!(self);
         let args = args.area(area).build();
 
-        match self.mirror_type.unwrap() {
-            MirrorMenu::Group => menu.render_with(|i| &i[2..], args),
-            MirrorMenu::Single => menu.render_default(args),
+        match self.sub_view.unwrap() {
+            Subview::Group => menu.render_with(|i| &i[2..], args),
+            Subview::Single => menu.render_default(args),
         }
 
         menu.render_searchbar_default(frame, chunks[2]);

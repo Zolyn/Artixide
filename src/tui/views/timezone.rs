@@ -3,36 +3,28 @@ use crossterm::event::KeyCode;
 use macro_rules_attribute::derive;
 use ratatui::layout::{Constraint, Layout};
 
-use crate::tui::{
+use crate::{tui::{
         data::timezones::get_timezones,
         widgets::{
             menu::{CachedSearchableMenu, MenuArgs},
             Widget,
         },
         Msg, TuiBackend,
-    };
+    }, lazy};
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
-#[derive(Debug, Default, WrappedView!)]
-struct Timezone {
-    layout: Layout,
-    menu: CachedSearchableMenu<String>,
+lazy! {
+    static LAYOUT: Layout = vertical_layout([
+        Constraint::Length(3),
+        Constraint::Min(18),
+        Constraint::Length(1),
+    ]);
 }
 
-impl Timezone {
-    fn new() -> Self {
-        let layout = vertical_layout([
-            Constraint::Length(3),
-            Constraint::Min(18),
-            Constraint::Length(1),
-        ]);
-
-        Self {
-            layout,
-            ..Default::default()
-        }
-    }
+#[derive(Debug, Default, WrappedView!)]
+struct Timezone {
+    menu: CachedSearchableMenu<String>,
 }
 
 impl View for Timezone {
@@ -61,7 +53,7 @@ impl View for Timezone {
             self.menu.replace_items(tz);
         });
 
-        let chunks = self.layout.split(frame.size());
+        let chunks = LAYOUT.split(frame.size());
 
         self.menu
             .render_default(MenuArgs::builder().frame(frame).area(chunks[1]).build());

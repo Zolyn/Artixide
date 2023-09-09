@@ -61,10 +61,6 @@ macro_rules! get_menu_mut {
 }
 
 impl Locale {
-    fn new() -> Self {
-        Self::default()
-    }
-
     fn handle_select(&mut self, locale: &mut LocaleConfig) -> Option<Msg> {
         let menu = get_menu_mut!(self);
         let item = menu.current_item()?;

@@ -121,3 +121,15 @@ pub trait Take: Default {
 }
 
 impl Take for String {}
+
+#[sealed]
+pub trait OptionExt {
+    fn drop(&mut self);
+}
+
+#[sealed]
+impl<T> OptionExt for Option<T> {
+    fn drop(&mut self) {
+        *self = None
+    }
+}

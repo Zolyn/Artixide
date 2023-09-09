@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use color_eyre::Result;
 use crossterm::event::KeyEvent;
-use macro_rules_attribute::macro_rules_derive;
+use macro_rules_attribute::derive;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     Frame,
@@ -13,8 +13,7 @@ use crate::config::Config;
 
 use super::{route_map::RouteMap, Msg, TuiBackend};
 
-#[derive(Debug, Clone, Copy, EnumCount, EnumString)]
-#[macro_rules_derive(RouteMap)]
+#[derive(Debug, Clone, Copy, EnumCount, EnumString, RouteMap!)]
 pub enum Route {
     Main,
     #[strum(serialize = "Keyboard layout")]
@@ -25,7 +24,15 @@ pub enum Route {
     Partition,
 }
 
+// TODO: Brief explanation on View, Focus, SubView, Popup
+
 pub trait View: Debug {
+    fn new() -> Self
+    where
+        Self: Default,
+    {
+        Self::default()
+    }
     fn render(&mut self, frame: &mut Frame<TuiBackend>) -> Result<()>;
     fn on_event(&mut self, event: KeyEvent, config: &mut Config) -> Option<Msg>;
 }

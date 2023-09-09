@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{
     config::Config,
-    extensions::{Take, BlockExt},
+    extensions::BlockExt,
     lazy,
     tui::{
         views::Route,
@@ -21,7 +21,7 @@ use crate::{
              Widget,
         },
         Msg, Operation, TuiBackend,
-    }, impl_take,
+    }
 };
 
 use super::{vertical_layout, View, WrappedView};
@@ -32,6 +32,9 @@ lazy! {
         Constraint::Max(18),
         Constraint::Min(1),
     ]);
+
+    static TEXT_LAYOUT: Layout = vertical_layout([Constraint::Length(1); 3]);
+    static SEARCH_LAYOUT: Layout = vertical_layout([Constraint::Min(1), Constraint::Length(1)]);
 }
 
 const ITEMS: &[&str] = &[
@@ -46,26 +49,16 @@ const ITEMS: &[&str] = &[
     "Init",
 ];
 
-#[derive(Debug, Default, Clone, Copy)]
-enum Focus {
-    #[default]
-    Menu,
+#[derive(Debug, Clone, Copy)]
+enum Popup {
     Hostname,
 }
-
-impl_take!(Focus);
 
 #[derive(Debug, Default, WrappedView!)]
 struct Main {
     menu: SearchableMenu,
-    focus: Focus,
+    popup: Option<Popup>,
     input: Input,
-}
-
-impl Main {
-    fn new() -> Self {
-        Self::default()
-    }
 }
 
 impl Main {
@@ -75,7 +68,7 @@ impl Main {
                 let item = ITEMS[self.menu.current_index()?];
 
                 if item == "Hostname" {
-                    self.focus = Focus::Hostname;
+                    self.popup = Some(Popup::Hostname);
                     return None;
                 }
 
@@ -97,7 +90,7 @@ impl Main {
     fn handle_input(&mut self, event: KeyEvent, config: &mut Config) -> Option<Msg> {
         let command = self.input.on_event(event)?;
 
-        let focus = self.focus.take();
+        let popup = self.popup.take().unwrap();
 
         if matches!(command, InputCommand::Cancel) {
             self.input.clear();
@@ -107,9 +100,8 @@ impl Main {
         let input: String = self.input.take();
         self.menu.reset_search();
 
-        match focus {
-            Focus::Hostname => config.hostname = input,
-            _ => unreachable!(),
+        match popup {
+            Popup::Hostname => config.hostname = input,
         }
 
         None
@@ -122,16 +114,17 @@ impl View for Main {
         event: crossterm::event::KeyEvent,
         config: &mut Config,
     ) -> Option<crate::tui::Msg> {
-        match self.focus {
-            Focus::Menu => self.handle_menu(event, config),
-            Focus::Hostname => self.handle_input(event, config),
+        let Some(popup) = self.popup else { return self.handle_menu(event, config) };
+
+        match popup {
+            Popup::Hostname => self.handle_input(event, config),
         }
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         let chunks = LAYOUT.split(frame.size());
 
-        let text_area = vertical_layout([Constraint::Length(1); 3]).split(chunks[0])[1];
+        let text_area = TEXT_LAYOUT.split(chunks[0])[1];
 
         let text = Line::from(vec![Span::raw("Select option")]);
 
@@ -146,20 +139,18 @@ impl View for Main {
             MenuArgs::builder().frame(frame).area(chunks[1]).build(),
         );
 
-        let search_area =
-            vertical_layout([Constraint::Min(1), Constraint::Length(1)]).split(chunks[2])[1];
+        let search_area = SEARCH_LAYOUT.split(chunks[2])[1];
 
         self.menu.render_searchbar_default(frame, search_area);
 
-        if matches!(self.focus, Focus::Menu) {
+        if self.popup.is_none() {
             return Ok(());
         }
 
         let offset = self.menu.current_index().unwrap() + 2;
 
-        let title = match self.focus {
-            Focus::Hostname => "Hostname",
-            _ => unreachable!(),
+        let title = match self.popup.unwrap() {
+            Popup::Hostname => "Hostname",
         };
 
         let block = Block::with_borders().title(title);

@@ -76,13 +76,6 @@ struct Partition {
 }
 
 impl Partition {
-    fn new() -> Self {
-        Self {
-            current_device: 0,
-            ..Default::default()
-        }
-    }
-
     fn make_partition_row<'a>(parent: &'a str, part: &'a MemPartition) -> Row<'a> {
         let esp = if part.bootable { "*" } else { "" };
         let label = match part.label {
