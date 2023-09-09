@@ -136,6 +136,10 @@ impl SearchableMenu {
 
         Some(index)
     }
+
+    pub fn inner_index(&self) -> Option<usize> {
+        self.inner.current_index()
+    }
 }
 
 impl SearchableMenu {

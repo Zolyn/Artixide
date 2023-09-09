@@ -130,6 +130,8 @@ pub trait OptionExt {
 #[sealed]
 impl<T> OptionExt for Option<T> {
     fn drop(&mut self) {
-        *self = None
+        if self.is_some() {
+            *self = None
+        }
     }
 }

@@ -44,7 +44,8 @@ const HEADER: [&str; 9] = [
     "FS",
     "FS label",
     "Mountpoint",
-    "~Size",
+    // TODO: Add notes about size
+    "Size",
 ];
 
 const TABLE_WIDTHS: &[Constraint] = &[

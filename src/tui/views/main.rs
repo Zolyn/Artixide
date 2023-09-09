@@ -147,7 +147,7 @@ impl View for Main {
             return Ok(());
         }
 
-        let offset = self.menu.current_index().unwrap() + 2;
+        let offset = self.menu.inner_index().unwrap() + 2;
 
         let title = match self.popup.unwrap() {
             Popup::Hostname => "Hostname",

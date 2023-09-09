@@ -13,7 +13,7 @@ use ratatui::{
 };
 
 use crate::{
-    extensions::{Take, BlockExt},
+    extensions::{Take, BlockExt, OptionExt},
     let_irrefutable,
     tui::{
         data::partition::{
@@ -211,7 +211,7 @@ impl DiskEditor {
     }
 
     fn handle_create(&mut self, event: KeyEvent, dev: &mut Device) -> Option<Msg> {
-        self.create_error = None;
+        self.create_error.drop();
         let command = self.input.on_event(event)?;
 
         if matches!(command, InputCommand::Cancel) {

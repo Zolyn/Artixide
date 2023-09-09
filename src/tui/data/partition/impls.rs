@@ -129,7 +129,7 @@ impl Device {
 
                 let part = MemPartition::from_raw(c, sector_size, is_gpt)?;
 
-                number_pool.set_used(part.number - 1);
+                number_pool.set_used(part.number);
 
                 Some(MemTableEntry::Partition(part))
             })
@@ -257,11 +257,11 @@ impl NumberPool {
     }
 
     pub fn set_used(&mut self, index: u16) {
-        self.inner[index as usize] = true
+        self.inner[index as usize - 1] = true
     }
 
     pub fn set_unused(&mut self, index: u16) {
-        self.inner[index as usize] = false
+        self.inner[index as usize - 1] = false
     }
 }
 
