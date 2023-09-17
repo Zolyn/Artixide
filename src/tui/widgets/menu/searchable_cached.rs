@@ -4,7 +4,7 @@ use macro_rules_attribute::derive;
 use ratatui::{layout::Rect, text::Span, widgets::Paragraph, Frame};
 
 use crate::{
-    extensions::StrExt,
+    extensions::{IteratorExt, StrExt},
     tui::widgets::{selectable::delegate_selection_methods, WidgetEventHandler},
     LooseDefault,
 };
@@ -91,7 +91,7 @@ impl<T> CachedSearchableMenu<T> {
                 .map(|(index, matched_indices)| {
                     stylize_matched_item(item_map_fn(&self.items[*index]), matched_indices)
                 })
-                .collect::<Vec<_>>();
+                .collect_vec();
 
             matched_items
         } else {

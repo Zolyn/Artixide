@@ -1,6 +1,8 @@
 use color_eyre::Result;
 use walkdir::WalkDir;
 
+use crate::extensions::IteratorExt;
+
 pub fn get_timezones() -> Result<Vec<String>> {
     let tz = WalkDir::new("/usr/share/zoneinfo")
         .sort_by_file_name()
@@ -32,7 +34,7 @@ pub fn get_timezones() -> Result<Vec<String>> {
             }
             Err(err) => Some(Err(err)),
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .try_collect_vec()?;
 
     Ok(tz)
 }

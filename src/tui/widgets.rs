@@ -23,31 +23,33 @@ macro_rules! widget_args {
             $(,)*
         })*
     ) => {
-        mod __widget_args {
-            use typed_builder::TypedBuilder;
-            use ratatui::{
-                layout::*,
-                widgets::*,
-                style::*,
-                Frame
-            };
+        paste::paste! {
+            mod [<__widget_args_ $name:snake:lower>] {
+                use typed_builder::TypedBuilder;
+                use ratatui::{
+                    layout::*,
+                    widgets::*,
+                    style::*,
+                    Frame
+                };
 
-            use $crate::{tui::TuiBackend, extensions::*};
+                use $crate::{tui::TuiBackend, extensions::*};
 
-            #[derive(TypedBuilder)]
-            pub struct $name<'a, 'b: 'a> {
-                pub(super) frame: &'a mut Frame<'b, TuiBackend>,
-                pub(super) area: Rect,
-                $(
+                #[derive(TypedBuilder)]
+                pub struct $name<'a, 'b: 'a> {
+                    pub(super) frame: &'a mut Frame<'b, TuiBackend>,
+                    pub(super) area: Rect,
                     $(
-                        $(#[$field_meta])*
-                        pub(super) $field_name : $($($optional)?Option<)?$field_ty$($($optional)?>)?
-                    ),*
-                )*
+                        $(
+                            $(#[$field_meta])*
+                            pub(super) $field_name : $($($optional)?Option<)?$field_ty$($($optional)?>)?
+                        ),*
+                    )*
+                }
             }
-        }
 
-        pub use __widget_args::$name;
+            pub use [<__widget_args_ $name:snake:lower>]::$name;
+        }
     }
 }
 

@@ -12,7 +12,7 @@ use crate::{
             Widget,
         },
         Msg, TuiBackend,
-    }, lazy,
+    }, lazy, extensions::IteratorExt,
 };
 
 use super::{horizontal_layout, vertical_layout, View, fetch_data_if_needed, WrappedView};
@@ -68,7 +68,7 @@ impl Locale {
         let result = match self.focus {
             Focus::Lang => {
                 let lang = if item.contains('@') {
-                    let split = item.split('@').collect::<Vec<_>>();
+                    let split = item.split('@').collect_vec();
                     assert_eq!(split.len(), 2, "Split length of item mismatch");
 
                     locale.modifier = Some(split[1].to_owned());
@@ -78,7 +78,7 @@ impl Locale {
                 };
 
                 let lang = if lang.contains('.') {
-                    let split = lang.split('.').collect::<Vec<_>>();
+                    let split = lang.split('.').collect_vec();
                     assert_eq!(split.len(), 2, "Split length of lang mismatch");
 
                     split[0]

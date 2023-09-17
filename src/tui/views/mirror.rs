@@ -12,7 +12,7 @@ use crate::{tui::{
             Widget,
         },
         Msg, TuiBackend,
-    }, lazy, config::Config, extensions::OptionExt};
+    }, lazy, config::Config, extensions::{OptionExt, IteratorExt}};
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
 
@@ -81,7 +81,7 @@ impl Mirror {
                     let servers = servers
                         .iter()
                         .map(|s| s.as_ref())
-                        .collect::<Vec<_>>()
+                        .collect_vec()
                         .join("\n");
 
                     let mirror = formatdoc! {"

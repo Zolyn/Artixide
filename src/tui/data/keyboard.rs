@@ -1,8 +1,10 @@
 use color_eyre::Result;
 use walkdir::WalkDir;
 
+use crate::extensions::{IteratorExt, VecExt};
+
 pub fn get_keyboard_layouts() -> Result<Vec<String>> {
-    let mut layouts = WalkDir::new("/usr/share/kbd/keymaps")
+    let layouts = WalkDir::new("/usr/share/kbd/keymaps")
         .into_iter()
         .filter_map(|e| match e {
             Ok(entry) => Some(Ok(entry
@@ -15,9 +17,8 @@ pub fn get_keyboard_layouts() -> Result<Vec<String>> {
                 .to_string())),
             Err(err) => Some(Err(err)),
         })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    layouts.sort_unstable();
+        .try_collect_vec()?
+        .sort_inplace();
 
     Ok(layouts)
 }

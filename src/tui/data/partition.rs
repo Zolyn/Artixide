@@ -10,7 +10,7 @@ use serde::Deserialize;
 use strum::{AsRefStr, EnumCount, EnumDiscriminants, EnumString};
 use typed_builder::TypedBuilder;
 
-use crate::extensions::CommandExt;
+use crate::extensions::{CommandExt, IteratorExt};
 
 mod impls;
 
@@ -219,7 +219,7 @@ pub fn get_devices() -> Result<Vec<Device>> {
             Ok(d) => d.map(Ok),
             Err(err) => Some(Err(err)),
         })
-        .collect::<Result<Vec<_>>>()?;
+        .try_collect_vec()?;
 
     debug!("Devices: {:#?}", devs);
 

@@ -2,6 +2,8 @@ use color_eyre::{eyre::eyre, Result};
 use regex::Regex;
 use std::{collections::BTreeSet, fs};
 
+use crate::extensions::IteratorExt;
+
 pub fn get_locales() -> Result<(Vec<String>, Vec<String>)> {
     let locale_re =
         Regex::new(r"^(?<locale>#?[a-z]+(_[A-Z]+)?(\@[a-z]+)?(\.[^\s]+)?)\s(?<encoding>[^\s]+)")
@@ -15,25 +17,21 @@ pub fn get_locales() -> Result<(Vec<String>, Vec<String>)> {
         .enumerate()
         .skip_while(|(_, line)| !locale_re.is_match(line))
         .map(|(i, line)| {
-            let caps = locale_re
+            locale_re
                 .captures(line)
-                .ok_or_else(|| eyre!("Failed to match locale: {}(line {})", line, i))?;
-
-            encoding_set.insert(caps.name("encoding").unwrap().as_str());
-
-            Ok(caps
-                .name("locale")
-                .unwrap()
-                .as_str()
-                .trim_start_matches('#')
-                .to_owned())
+                .ok_or_else(|| eyre!("Failed to match locale: {}(line {})", line, i))
+                .map(|caps| {
+                    encoding_set.insert(caps.name("encoding").unwrap().as_str());
+                    caps.name("locale")
+                        .unwrap()
+                        .as_str()
+                        .trim_start_matches('#')
+                        .to_owned()
+                })
         })
-        .collect::<Result<Vec<_>>>()?;
+        .try_collect_vec()?;
 
-    let encodings = encoding_set
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
+    let encodings = encoding_set.into_iter().map(String::from).collect();
 
     Ok((langs, encodings))
 }

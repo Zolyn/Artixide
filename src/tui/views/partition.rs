@@ -20,7 +20,7 @@ use crate::{
             Widget,
         },
         Msg, TuiBackend,
-    },
+    }, extensions::IteratorExt,
 };
 
 use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
@@ -146,7 +146,7 @@ impl Partition {
                         MemTableEntry::Partition(part) => Self::make_partition_row(parent, part),
                         MemTableEntry::Free(space) => Self::make_free_space_row(space),
                     })
-                    .collect::<Vec<_>>();
+                    .collect_vec();
 
                 let header = {
                     let mut header = HEADER;

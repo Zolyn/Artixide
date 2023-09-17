@@ -135,3 +135,45 @@ impl<T> OptionExt for Option<T> {
         }
     }
 }
+
+#[sealed]
+pub trait IteratorExt: Iterator {
+    fn collect_vec(self) -> Vec<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.collect()
+    }
+
+    fn try_collect<T, U, E>(self) -> Result<U, E>
+    where
+        Self: Sized + Iterator<Item = Result<T, E>>,
+        Result<U, E>: FromIterator<Result<T, E>>,
+    {
+        self.collect()
+    }
+
+    fn try_collect_vec<T, E>(self) -> Result<Vec<T>, E>
+    where
+        Self: Sized + Iterator<Item = Result<T, E>>,
+        Result<Vec<T>, E>: FromIterator<Result<T, E>>,
+    {
+        self.try_collect()
+    }
+}
+
+#[sealed]
+impl<T: Iterator> IteratorExt for T {}
+
+#[sealed]
+pub trait VecExt {
+    fn sort_inplace(self) -> Self;
+}
+
+#[sealed]
+impl<T: Ord> VecExt for Vec<T> {
+    fn sort_inplace(mut self) -> Self {
+        self.sort_unstable();
+        self
+    }
+}

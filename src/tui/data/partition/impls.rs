@@ -5,6 +5,8 @@ use gptman::GPT;
 use indexmap::IndexMap;
 use strum::EnumCount;
 
+use crate::extensions::{IteratorExt, VecExt};
+
 use super::{
     format_size, itoa, BlockDevice, ChildBlockDevice, CompatDevice, Device, Disk, DiskSpace,
     FileSystem, MemPartition, MemTableEntry, Modification, ModificationSet, ModificationType,
@@ -133,7 +135,7 @@ impl Device {
 
                 Some(MemTableEntry::Partition(part))
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         assert!(mem_table.len() <= 256, "Maximum partition amount exceeded");
 
@@ -176,7 +178,7 @@ impl CompatDevice {
         let entries = &mut self.mem_table;
         let len = entries.len();
 
-        let mut positions = once(disk.starting_lba)
+        let positions = once(disk.starting_lba)
             .chain(
                 entries
                     .iter()
@@ -187,9 +189,8 @@ impl CompatDevice {
                     .flat_map(|part| [part.start, part.end]),
             )
             .chain(once(disk.ending_lba))
-            .collect::<Vec<_>>();
-
-        positions.sort_unstable();
+            .collect_vec()
+            .sort_inplace();
 
         // The len of positions is always even
         let spaces = positions.chunks(2).filter_map(|chunk| {

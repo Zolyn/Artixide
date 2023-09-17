@@ -13,7 +13,7 @@ use ratatui::{
 };
 
 use crate::{
-    extensions::{Take, BlockExt, OptionExt},
+    extensions::{Take, BlockExt, OptionExt, IteratorExt},
     let_irrefutable,
     tui::{
         data::partition::{
@@ -120,7 +120,7 @@ impl DiskEditor {
                         MemTableEntry::Free(space) => space.as_raw_space(),
                         MemTableEntry::Partition(part) => part.as_raw_space(),
                     })
-                    .collect::<Vec<_>>();
+                    .collect_vec();
 
                 assert!(removed.len() == 2);
 

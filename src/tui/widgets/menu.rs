@@ -8,7 +8,7 @@ use ratatui::{
 pub mod searchable;
 pub mod searchable_cached;
 
-use crate::extensions::StyleExt;
+use crate::extensions::{IteratorExt, StyleExt};
 
 use super::{selectable::SelectableWidget, set_if_some, widget_args};
 pub use searchable::SearchableMenu;
@@ -73,7 +73,7 @@ impl Menu {
 
                 ListItem::new(item)
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         let mut list = List::new(items).highlight_symbol("> ");
 
