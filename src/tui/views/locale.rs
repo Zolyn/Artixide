@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use crossterm::event::KeyCode;
 use macro_rules_attribute::derive;
-use ratatui::layout::{Constraint, Layout};
+use ratatui::{layout::{Constraint, Layout}, widgets::Block, style::{Style, Color}};
 
 use crate::{
     config::locale::LocaleConfig,
@@ -12,7 +12,7 @@ use crate::{
             Widget,
         },
         Msg, TuiBackend,
-    }, lazy, extensions::IteratorExt,
+    }, lazy, extensions::{IteratorExt, BlockExt},
 };
 
 use super::{horizontal_layout, vertical_layout, View, fetch_data_if_needed, WrappedView};
@@ -162,9 +162,9 @@ impl View for Locale {
             let args_builder = MenuArgs::builder().frame(frame).area(area);
 
             if cur == tab {
-                menu.render_default(args_builder.build())
+                menu.render_default(args_builder.block(Some(Block::with_borders().style(Style::default().fg(Color::LightBlue)))).build())
             } else {
-                menu.render_default(args_builder.hightlight_style(None).build())
+                menu.render_default(args_builder.hightlight_style(Some(Style::default().fg(Color::White))).build())
             }
         }
 

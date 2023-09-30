@@ -6,7 +6,7 @@ use macro_rules_attribute::derive;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Block, Clear, Paragraph}, style::{Style, Color},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     tui::{
         views::Route,
         widgets::{
-            input::{Input, InputCommand},
+            input::{Input, InputCommand, InputArgs},
             menu::{MenuArgs, SearchableMenu},
              Widget,
         },
@@ -123,7 +123,6 @@ impl View for Main {
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
         let chunks = LAYOUT.split(frame.size());
-
         let text_area = TEXT_LAYOUT.split(chunks[0])[1];
 
         let text = Line::from(vec![Span::raw("Select option")]);
@@ -166,7 +165,7 @@ impl View for Main {
         frame.render_widget(Clear, area);
         frame.render_widget(block, area);
 
-        self.input.render(frame, inner);
+        self.input.render(InputArgs::builder().frame(frame).area(inner).build());
 
         Ok(())
     }

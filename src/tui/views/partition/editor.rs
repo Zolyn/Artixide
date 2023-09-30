@@ -21,7 +21,7 @@ use crate::{
             DEFAULT_ALIGN,
         },
         widgets::{
-            input::{Input, InputCommand},
+            input::{Input, InputCommand, InputArgs},
             menu::{Menu, MenuArgs},
             Widget,
         },
@@ -394,7 +394,7 @@ impl DiskEditor {
 
         frame.render_widget(block, area);
 
-        self.input.render(frame, inner)
+        self.input.render(InputArgs::builder().frame(frame).area(inner).build())
     }
 
     pub fn render(&mut self, frame: &mut Frame<TuiBackend>, area: Rect, focus: bool) {

@@ -4,9 +4,18 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::extensions::Take;
 
+use super::{set_if_some, widget_args};
+
 pub enum InputCommand {
     Cancel,
     Submit,
+}
+
+widget_args! {
+    InputArgs {
+        #[builder(default = Some(Style::default().fg(Color::White)))]
+        style?: Style
+    }
 }
 
 #[derive(Debug, Default)]
@@ -15,8 +24,12 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn render<B: Backend>(&self, frame: &mut Frame<B>, area: Rect) {
-        let input = Paragraph::new(Line::from(self.input.as_str()));
+    pub fn render(&self, args: InputArgs) {
+        let InputArgs { frame, area, style } = args;
+
+        let mut input = Paragraph::new(Line::from(self.input.as_str()));
+
+        set_if_some!(input, style);
 
         frame.render_widget(input, area);
 

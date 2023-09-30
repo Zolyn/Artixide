@@ -2,7 +2,10 @@ use std::{
     env,
     io::{self, Stdout},
     path::PathBuf,
+    process::Command,
     sync::atomic::{AtomicBool, Ordering},
+    thread,
+    time::Duration,
 };
 
 use color_eyre::{
@@ -19,7 +22,7 @@ use crossterm::{
 use log::info;
 use ratatui::{backend::CrosstermBackend, Terminal};
 
-use crate::{config::Config, lazy};
+use crate::{config::Config, extensions::CommandExt, lazy};
 
 use self::views::{Route, RouteMap, View};
 
@@ -77,6 +80,8 @@ pub fn destroy() -> Result<()> {
 
     if !*IS_TTY {
         execute!(stdout, LeaveAlternateScreen)?;
+    } else {
+        Command::new("clear").inherit().run()?;
     }
 
     execute!(stdout, cursor::Show)?;

@@ -1,4 +1,4 @@
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 use color_eyre::{eyre::eyre, Help, Report, Result, SectionExt};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -18,6 +18,7 @@ lazy! {
 pub trait CommandExt {
     fn run(&mut self) -> Result<()>;
     fn read(&mut self) -> Result<String>;
+    fn inherit(self) -> Self;
 }
 
 #[sealed]
@@ -48,6 +49,13 @@ impl CommandExt for Command {
         }
 
         Err(wrap_command_error(&stdout, &stderr))
+    }
+
+    fn inherit(mut self) -> Self {
+        self.stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+        self
     }
 }
 
