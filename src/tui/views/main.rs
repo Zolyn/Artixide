@@ -58,6 +58,7 @@ enum Popup {
 struct Main {
     menu: SearchableMenu,
     popup: Option<Popup>,
+    // Shared
     input: Input,
 }
 

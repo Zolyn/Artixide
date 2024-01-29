@@ -69,10 +69,3 @@ macro_rules! LooseDefault {
         }
     };
 }
-
-#[macro_export]
-macro_rules! impl_take {
-    ($name:ident) => {
-        impl $crate::extensions::Take for $name {}
-    };
-}

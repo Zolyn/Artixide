@@ -15,7 +15,7 @@ use crate::{
     }, lazy, extensions::{IteratorExt, BlockExt},
 };
 
-use super::{horizontal_layout, vertical_layout, View, fetch_data_if_needed, WrappedView};
+use super::{horizontal_layout, vertical_layout, View, lazy_fetch, WrappedView};
 
 lazy! {
     static V_LAYOUT: Layout = vertical_layout([
@@ -135,7 +135,7 @@ impl View for Locale {
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
-        fetch_data_if_needed!({
+        lazy_fetch!({
             let (langs, encodings) = get_locales()?;
 
             let menu = &mut self.menus[Focus::Lang as usize];

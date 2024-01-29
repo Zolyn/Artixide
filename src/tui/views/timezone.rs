@@ -12,7 +12,7 @@ use crate::{tui::{
         Msg, TuiBackend,
     }, lazy};
 
-use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
+use super::{vertical_layout, View, lazy_fetch, WrappedView};
 
 lazy! {
     static LAYOUT: Layout = vertical_layout([
@@ -48,7 +48,7 @@ impl View for Timezone {
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
-        fetch_data_if_needed!({
+        lazy_fetch!({
             let tz = get_timezones()?;
             self.menu.replace_items(tz);
         });

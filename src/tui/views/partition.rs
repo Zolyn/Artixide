@@ -23,7 +23,7 @@ use crate::{
     }, extensions::IteratorExt,
 };
 
-use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
+use super::{vertical_layout, View, lazy_fetch, WrappedView};
 
 mod editor;
 
@@ -209,7 +209,7 @@ impl View for Partition {
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> color_eyre::Result<()> {
-        fetch_data_if_needed!({
+        lazy_fetch!({
             self.devices = get_devices()?;
 
             if self.devices.is_empty() {

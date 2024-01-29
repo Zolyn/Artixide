@@ -14,7 +14,7 @@ use crate::{tui::{
         Msg, TuiBackend,
     }, lazy, config::Config, extensions::{OptionExt, IteratorExt}};
 
-use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
+use super::{vertical_layout, View, lazy_fetch, WrappedView};
 
 lazy! {
     static LAYOUT: Layout = vertical_layout([
@@ -142,7 +142,7 @@ impl View for Mirror {
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
-        fetch_data_if_needed!({
+        lazy_fetch!({
             let (group, servers, trim_servers, default_servers_count) = get_mirrors()?;
 
             self.mirror_menus[Subview::Group as usize].replace_items(group);

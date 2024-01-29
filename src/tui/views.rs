@@ -52,7 +52,7 @@ pub fn horizontal_layout<C: Into<Vec<Constraint>>>(constraints: C) -> Layout {
     make_layout(constraints.into(), Direction::Horizontal)
 }
 
-macro_rules! fetch_data_if_needed {
+macro_rules! lazy_fetch {
     ($f:stmt) => {{
         use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -84,4 +84,4 @@ macro_rules! WrappedView {
     };
 }
 
-pub(self) use {fetch_data_if_needed, WrappedView};
+pub(self) use {lazy_fetch, WrappedView};

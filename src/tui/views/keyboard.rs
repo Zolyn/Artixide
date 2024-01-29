@@ -16,7 +16,7 @@ use crate::{
     }, lazy,
 };
 
-use super::{vertical_layout, View, fetch_data_if_needed, WrappedView};
+use super::{vertical_layout, View, lazy_fetch, WrappedView};
 
 lazy! {
     static LAYOUT: Layout = vertical_layout([
@@ -58,7 +58,7 @@ impl View for Keyboard {
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame<TuiBackend>) -> Result<()> {
-        fetch_data_if_needed!({
+        lazy_fetch!({
             let layouts = get_keyboard_layouts().wrap_err("Get keyboard layouts")?;
 
             self.menu.replace_items(layouts);
